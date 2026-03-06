@@ -14,27 +14,40 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Görsel (Image) işlemlerini yöneten servis sınıfı.
+ * Görsel yükleme, güncelleme, silme ve getirme işlemlerini gerçekleştirir.
+ * Görseller veritabanında binary (byte[]) olarak saklanır.
+ */
 @Service
 @RequiredArgsConstructor
-public class ImageService  implements  IImageService{
-    private  final ImageRepository imageRepository;
-    private  final IProductService productService;
+public class ImageService implements IImageService {
+    private final ImageRepository imageRepository;
+    private final IProductService productService;
 
-
+    /** ID'ye göre görseli getirir. Bulunamazsa ResourcesNotFoundException fırlatır. */
     @Override
     public Image getImageById(Long id) {
         return imageRepository.findById(id)
-                .orElseThrow(()->new ResourcesNotFoundException("No image found with id : "+id))
-                ;
+                .orElseThrow(() -> new ResourcesNotFoundException("No image found with id : " + id));
     }
 
+    /** ID'ye göre görseli siler. Bulunamazsa ResourcesNotFoundException fırlatır. */
     @Override
     public void deleteImageById(Long id) {
-        imageRepository.findById(id).ifPresentOrElse(imageRepository::delete,()->{
-            throw new ResourcesNotFoundException("No image found with id :"+id);
+        imageRepository.findById(id).ifPresentOrElse(imageRepository::delete, () -> {
+            throw new ResourcesNotFoundException("No image found with id :" + id);
         });
     }
 
+    /**
+     * Birden fazla görseli bir ürüne bağlı olarak kaydeder.
+     * Her dosya için:
+     * 1. Dosya tipi, adı ve binary içeriği set edilir
+     * 2. Ürünle ilişkilendirilir ve kaydedilir
+     * 3. Kaydedilen ID ile download URL oluşturulur ve tekrar güncellenir
+     * 4. Oluşturulan ImageDto listesi döner (controller'a verilir)
+     */
     @Override
     public List<ImageDto> saveImages(List<MultipartFile> files, Long productId) {
         Product product = productService.getProductById(productId);
@@ -42,15 +55,17 @@ public class ImageService  implements  IImageService{
         for (MultipartFile file : files) {
             try {
                 Image image = new Image();
-                image.setFileType(file.getContentType());
+                image.setFileType(file.getContentType());   // Örn: "image/jpeg"
                 image.setFileName(file.getOriginalFilename());
-                image.setImage(file.getBytes());
+                image.setImage(file.getBytes());            // binary veri
                 image.setProduct(product);
+                // Önce kaydet, ID alındıktan sonra download URL güncelle
                 String buildDownloadUrl = "/api/v1/images/image/download/";
                 image.setDownloadUrl(buildDownloadUrl + image.getId());
                 Image savedImage = imageRepository.save(image);
                 savedImage.setDownloadUrl(buildDownloadUrl + savedImage.getId());
                 imageRepository.save(savedImage);
+                // Sadece gerekli alanları içeren DTO oluştur
                 ImageDto imageDto = new ImageDto();
                 imageDto.setId(savedImage.getId());
                 imageDto.setFileName(savedImage.getFileName());
@@ -63,15 +78,19 @@ public class ImageService  implements  IImageService{
         return savedImageDto;
     }
 
+    /**
+     * Var olan bir görseli yeni dosya ile günceller.
+     * ID ile görseli bulur, dosya tipini, adını ve binary içeriğini değiştirir.
+     */
     @Override
     public void updateImage(MultipartFile file, Long imageId) {
         Image image = getImageById(imageId);
-        try{
-            image.setFileType(file.getContentType());      // image/jpeg gibi
+        try {
+            image.setFileType(file.getContentType());
             image.setFileName(file.getOriginalFilename());
             image.setImage(file.getBytes());
             imageRepository.save(image);
-        }catch (Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }
     }
