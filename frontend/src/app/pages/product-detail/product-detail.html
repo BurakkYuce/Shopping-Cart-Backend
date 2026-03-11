@@ -1,0 +1,19 @@
+<div class="product-detail-page">
+  @if (product) {
+    <div class="product-detail-card">
+      <h1>{{ product.name }}</h1>
+
+      <p><strong>Category:</strong> {{ product.category }}</p>
+      <p><strong>Price:</strong> {{ product.price }} TL</p>
+      <p><strong>Rating:</strong> {{ product.rating }}</p>
+      <p><strong>Description:</strong> {{ product.description }}</p>
+
+      <button routerLink="/products">Back to Products</button>
+    </div>
+  } @else {
+    <div class="not-found-card">
+      <h2>Product not found</h2>
+      <button routerLink="/products">Back to Products</button>
+    </div>
+  }
+</div>

@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ecommerce
+  jpa:
+    show-sql: true
+
+app:
+  dataloader:
+    enabled: true
+  datasets:
+    path: /Users/burak/Desktop/demo-apps/datasets/output/
+
+logging:
+  level:
+    com.datapulse: DEBUG
+    org.springframework.security: DEBUG

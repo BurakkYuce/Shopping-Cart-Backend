@@ -1,0 +1,16 @@
+package com.datapulse.logging;
+
+public enum LogEventType {
+    USER_LOGIN,
+    USER_LOGOUT,
+    USER_REGISTER,
+    ORDER_PLACED,
+    ORDER_STATUS_CHANGED,
+    PRODUCT_VIEWED,
+    AUTH_FAILED,
+    AUTH_UNAUTHORIZED,
+    API_REQUEST,
+    CHAT_QUERY,
+    DATA_LOADED,
+    ERROR_OCCURRED
+}
