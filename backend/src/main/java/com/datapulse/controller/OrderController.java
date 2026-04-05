@@ -48,4 +48,14 @@ public class OrderController {
             Authentication auth) {
         return ResponseEntity.ok(orderService.updateOrderStatus(id, body.get("status"), auth));
     }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable String id, Authentication auth) {
+        return ResponseEntity.ok(orderService.cancelOrder(id, auth));
+    }
+
+    @PostMapping("/{id}/return")
+    public ResponseEntity<?> returnOrder(@PathVariable String id, Authentication auth) {
+        return ResponseEntity.ok(orderService.returnOrder(id, auth));
+    }
 }

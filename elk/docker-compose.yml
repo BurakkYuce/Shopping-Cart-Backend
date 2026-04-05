@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: ecommerce
       POSTGRES_USER: ${POSTGRES_USER}
@@ -21,7 +21,9 @@ services:
     image: elasticsearch:8.11.0
     environment:
       - discovery.type=single-node
-      - xpack.security.enabled=false
+      - xpack.security.enabled=true
+      - xpack.security.transport.ssl.enabled=false
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-elastic}
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
     volumes:
       - es_data:/usr/share/elasticsearch/data
@@ -32,13 +34,15 @@ services:
       - elk-net
       - backend-net
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD:-elastic} http://localhost:9200/_cluster/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 10
 
   logstash:
     image: logstash:8.11.0
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-elastic}
     volumes:
       - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
     ports:
@@ -54,6 +58,8 @@ services:
     image: kibana:8.11.0
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-elastic}
     volumes:
       - ./elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:

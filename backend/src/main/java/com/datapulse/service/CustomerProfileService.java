@@ -1,5 +1,6 @@
 package com.datapulse.service;
 
+import com.datapulse.dto.response.CustomerProfileResponse;
 import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.model.CustomerProfile;
@@ -20,13 +21,14 @@ public class CustomerProfileService {
         return (UserDetailsImpl) auth.getPrincipal();
     }
 
-    public CustomerProfile getMyProfile(Authentication auth) {
+    public CustomerProfileResponse getMyProfile(Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
-        return customerProfileRepository.findByUserId(currentUser.getId())
+        CustomerProfile profile = customerProfileRepository.findByUserId(currentUser.getId())
                 .orElseThrow(() -> new EntityNotFoundException("CustomerProfile for userId", currentUser.getId()));
+        return CustomerProfileResponse.from(profile);
     }
 
-    public CustomerProfile getProfileById(String id, Authentication auth) {
+    public CustomerProfileResponse getProfileById(String id, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -40,10 +42,10 @@ public class CustomerProfileService {
             throw new UnauthorizedAccessException("Access denied: you can only view your own profile");
         }
 
-        return profile;
+        return CustomerProfileResponse.from(profile);
     }
 
-    public CustomerProfile updateMyProfile(Authentication auth, CustomerProfile updates) {
+    public CustomerProfileResponse updateMyProfile(Authentication auth, CustomerProfile updates) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
 
         CustomerProfile profile = customerProfileRepository.findByUserId(currentUser.getId())
@@ -71,6 +73,6 @@ public class CustomerProfileService {
             profile.setSatisfactionLevel(updates.getSatisfactionLevel());
         }
 
-        return customerProfileRepository.save(profile);
+        return CustomerProfileResponse.from(customerProfileRepository.save(profile));
     }
 }

@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: dGVzdC1zZWNyZXQta2V5LTMyY2hhcnMtbWluaW11bS1yZXF1aXJlZA==
+    expiration: 86400000
+    refresh-expiration: 604800000
+  datasets:
+    path: /tmp/
+  dataloader:
+    enabled: false
+    seed-password: testpass
+  cors:
+    allowed-origins: http://localhost:4200
+  chatbot:
+    url: http://localhost:8002

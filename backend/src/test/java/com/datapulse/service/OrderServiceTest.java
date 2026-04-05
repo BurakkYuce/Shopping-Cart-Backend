@@ -84,8 +84,8 @@ class OrderServiceTest {
         Pageable pageable = PageRequest.of(0, 50);
         Authentication auth = buildIndividualAuth("user1");
 
-        Order order1 = new Order("order1", "user1", "store1", "pending", 100.0, LocalDateTime.now(), "card");
-        Order order2 = new Order("order2", "user1", "store1", "shipped", 200.0, LocalDateTime.now(), "cash");
+        Order order1 = new Order("order1", "user1", null, "store1", null, "pending", 100.0, LocalDateTime.now(), "card");
+        Order order2 = new Order("order2", "user1", null, "store1", null, "shipped", 200.0, LocalDateTime.now(), "cash");
         List<Order> orders = List.of(order1, order2);
         Page<Order> orderPage = new PageImpl<>(orders, pageable, orders.size());
 
@@ -103,7 +103,7 @@ class OrderServiceTest {
     void createOrder_success() {
         Authentication auth = buildIndividualAuth("user1");
 
-        Product product = new Product("prod1", "store1", "cat1", "SKU-01", "Widget", 10.0, "A widget");
+        Product product = new Product("prod1", "store1", null, "cat1", null, "SKU-01", "Widget", 10.0, "A widget", null, 100, null, null, null);
 
         CreateOrderRequest req = new CreateOrderRequest();
         req.setStoreId("store1");
@@ -128,7 +128,7 @@ class OrderServiceTest {
     void getOrderById_wrongUser_throwsUnauthorized() {
         Authentication auth = buildIndividualAuth("user1");
 
-        Order order = new Order("order1", "other-user", "store1", "pending", 50.0, LocalDateTime.now(), "card");
+        Order order = new Order("order1", "other-user", null, "store1", null, "pending", 50.0, LocalDateTime.now(), "card");
 
         when(orderRepository.findById("order1")).thenReturn(Optional.of(order));
 

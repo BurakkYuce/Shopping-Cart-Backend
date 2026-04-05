@@ -1,12 +1,13 @@
 #!/bin/bash
 BASE="http://localhost:8080"
+PASSWORD="${SEED_PASSWORD:-changeme}"
 
-echo "=== Fetching tokens ==="
+echo "=== Fetching tokens (using SEED_PASSWORD) ==="
 
 # Admin login
 ADMIN_TOKEN=$(curl -s -X POST "$BASE/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@datapulse.com","password":"hashed_pw_123"}' \
+  -d "{\"email\":\"admin@datapulse.com\",\"password\":\"$PASSWORD\"}" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('accessToken',''))")
 
 # Pick a real individual user from the DB (first one)
@@ -15,7 +16,7 @@ IND_EMAIL=$(curl -s "$BASE/api/users" -H "Authorization: Bearer $ADMIN_TOKEN" \
 
 IND_TOKEN=$(curl -s -X POST "$BASE/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d "{\"email\":\"$IND_EMAIL\",\"password\":\"hashed_pw_123\"}" \
+  -d "{\"email\":\"$IND_EMAIL\",\"password\":\"$PASSWORD\"}" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('accessToken',''))")
 
 # Register a fresh corporate user
@@ -29,9 +30,9 @@ echo "Admin:      ${ADMIN_TOKEN:0:20}..."
 echo "Individual: ${IND_TOKEN:0:20}..."
 echo "Corporate:  ${CORP_TOKEN:0:20}..."
 
-# Grab some product IDs
+# Grab some product IDs (endpoint returns Page object)
 PRODUCT_IDS=$(curl -s "$BASE/api/products" \
-  | python3 -c "import sys,json; ps=json.load(sys.stdin); print('\n'.join([p['id'] for p in ps[:20]]))")
+  | python3 -c "import sys,json; ps=json.load(sys.stdin); items=ps.get('content', ps) if isinstance(ps, dict) else ps; print('\n'.join([p['id'] for p in items[:20]]))")
 P1=$(echo "$PRODUCT_IDS" | sed -n '1p')
 P2=$(echo "$PRODUCT_IDS" | sed -n '2p')
 P3=$(echo "$PRODUCT_IDS" | sed -n '3p')

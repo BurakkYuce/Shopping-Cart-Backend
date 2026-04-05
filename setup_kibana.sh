@@ -1,8 +1,10 @@
 #!/bin/bash
 KIBANA="http://localhost:5601"
+ELASTIC_PASSWORD="${ELASTIC_PASSWORD:-elastic}"
+AUTH=('-u' "elastic:$ELASTIC_PASSWORD")
 
 echo "⏳ Kibana hazır olana kadar bekleniyor..."
-until curl -s "$KIBANA/api/status" | python3 -c "import sys,json; s=json.load(sys.stdin); exit(0 if s.get('status',{}).get('overall',{}).get('level')=='available' else 1)" 2>/dev/null; do
+until curl -s "${AUTH[@]}" "$KIBANA/api/status" | python3 -c "import sys,json; s=json.load(sys.stdin); exit(0 if s.get('status',{}).get('overall',{}).get('level')=='available' else 1)" 2>/dev/null; do
   echo -n "."
   sleep 3
 done
@@ -12,7 +14,7 @@ HEADERS=('-H' 'kbn-xsrf: true' '-H' 'Content-Type: application/json')
 
 # ─── 1. Data View ────────────────────────────────────────────────────────────
 echo "📌 Data view oluşturuluyor..."
-curl -s -X POST "$KIBANA/api/data_views/data_view" "${HEADERS[@]}" -d '{
+curl -s "${AUTH[@]}" -X POST "$KIBANA/api/data_views/data_view" "${HEADERS[@]}" -d '{
   "data_view": {
     "id": "ecommerce-logs",
     "title": "ecommerce-logs-*",
@@ -24,7 +26,7 @@ curl -s -X POST "$KIBANA/api/data_views/data_view" "${HEADERS[@]}" -d '{
 # ─── 2. Saved Objects (Visualizations + Dashboard) ───────────────────────────
 echo "📊 Visualization'lar ve dashboard oluşturuluyor..."
 
-curl -s -X POST "$KIBANA/api/saved_objects/_bulk_create?overwrite=true" "${HEADERS[@]}" -d '[
+curl -s "${AUTH[@]}" -X POST "$KIBANA/api/saved_objects/_bulk_create?overwrite=true" "${HEADERS[@]}" -d '[
   {
     "type": "visualization",
     "id": "event-type-donut",

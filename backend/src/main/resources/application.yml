@@ -5,8 +5,12 @@ spring:
     password: ${DB_PASS}
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
     show-sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "0"
     properties:
       hibernate:
         jdbc:
@@ -22,6 +26,11 @@ app:
     path: ${DATASETS_PATH:/datasets/output/}
   dataloader:
     enabled: ${DATALOADER_ENABLED:true}
+    seed-password: ${SEED_PASSWORD:changeme}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  chatbot:
+    url: ${CHATBOT_URL:http://localhost:8002}
 
 springdoc:
   api-docs:

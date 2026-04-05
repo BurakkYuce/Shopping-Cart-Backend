@@ -1,5 +1,6 @@
 package com.datapulse.service;
 
+import com.datapulse.dto.response.ShipmentResponse;
 import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.model.Order;
@@ -47,22 +48,24 @@ public class ShipmentService {
         // ADMIN has access to all
     }
 
-    public Shipment getByOrderId(String orderId, Authentication auth) {
+    public ShipmentResponse getByOrderId(String orderId, Authentication auth) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
 
         verifyOrderAccess(order, auth);
 
-        return shipmentRepository.findFirstByOrderId(orderId)
+        Shipment shipment = shipmentRepository.findFirstByOrderId(orderId)
                 .orElseThrow(() -> new EntityNotFoundException("Shipment for orderId", orderId));
+        return ShipmentResponse.from(shipment);
     }
 
-    public Shipment getById(String id) {
-        return shipmentRepository.findById(id)
+    public ShipmentResponse getById(String id) {
+        Shipment shipment = shipmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Shipment", id));
+        return ShipmentResponse.from(shipment);
     }
 
-    public Shipment createShipment(String orderId, Shipment shipment, Authentication auth) {
+    public ShipmentResponse createShipment(String orderId, Shipment shipment, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -83,10 +86,10 @@ public class ShipmentService {
         shipment.setId(id);
         shipment.setOrderId(orderId);
 
-        return shipmentRepository.save(shipment);
+        return ShipmentResponse.from(shipmentRepository.save(shipment));
     }
 
-    public Shipment updateShipment(String id, Shipment updates, Authentication auth) {
+    public ShipmentResponse updateShipment(String id, Shipment updates, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -125,7 +128,7 @@ public class ShipmentService {
             shipment.setWeightGms(updates.getWeightGms());
         }
 
-        return shipmentRepository.save(shipment);
+        return ShipmentResponse.from(shipmentRepository.save(shipment));
     }
 
     public void deleteShipment(String id, Authentication auth) {

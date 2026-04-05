@@ -52,6 +52,10 @@ public class ProductService {
         return productRepository.findAll(pageable).map(ProductResponse::from);
     }
 
+    public Page<ProductResponse> searchProducts(String query, String categoryId, Double minPrice, Double maxPrice, Pageable pageable) {
+        return productRepository.search(query, categoryId, minPrice, maxPrice, pageable).map(ProductResponse::from);
+    }
+
     public ProductResponse getProductById(String id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product", id));
@@ -92,6 +96,8 @@ public class ProductService {
         product.setName(req.getName());
         product.setUnitPrice(req.getUnitPrice());
         product.setDescription(req.getDescription());
+        product.setImageUrl(req.getImageUrl());
+        if (req.getStockQuantity() != null) product.setStockQuantity(req.getStockQuantity());
 
         productRepository.save(product);
         return ProductResponse.from(product);
@@ -120,6 +126,8 @@ public class ProductService {
         if (req.getName() != null) product.setName(req.getName());
         if (req.getUnitPrice() != null) product.setUnitPrice(req.getUnitPrice());
         if (req.getDescription() != null) product.setDescription(req.getDescription());
+        if (req.getImageUrl() != null) product.setImageUrl(req.getImageUrl());
+        if (req.getStockQuantity() != null) product.setStockQuantity(req.getStockQuantity());
 
         productRepository.save(product);
         return ProductResponse.from(product);

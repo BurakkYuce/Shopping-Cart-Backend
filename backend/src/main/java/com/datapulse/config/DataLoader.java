@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.FileReader;
@@ -31,6 +32,9 @@ public class DataLoader implements CommandLineRunner {
     @Value("${app.datasets.path}")
     private String datasetsPath;
 
+    @Value("${app.dataloader.seed-password}")
+    private String seedPassword;
+
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
@@ -42,6 +46,7 @@ public class DataLoader implements CommandLineRunner {
     private final ShipmentRepository shipmentRepository;
     private final ReviewRepository reviewRepository;
     private final LogEventPublisher logEventPublisher;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) {
@@ -51,6 +56,9 @@ public class DataLoader implements CommandLineRunner {
         }
         log.info("Starting data load from: {}", datasetsPath);
         try {
+            log.info("Disabling FK constraints for bulk data load...");
+            jdbcTemplate.execute("SET session_replication_role = 'replica'");
+
             loadCategories();
             loadUsers();
             loadStores();
@@ -60,10 +68,15 @@ public class DataLoader implements CommandLineRunner {
             loadOrderItems();
             loadShipments();
             loadReviews();
+
+            jdbcTemplate.execute("SET session_replication_role = 'origin'");
+            log.info("FK constraints re-enabled.");
+
             logEventPublisher.publish(LogEventType.DATA_LOADED, null, null,
                     Map.of("message", "All CSV data loaded successfully"));
             log.info("Data loading complete.");
         } catch (Exception e) {
+            jdbcTemplate.execute("SET session_replication_role = 'origin'");
             log.error("Data loading failed", e);
         }
     }
@@ -181,8 +194,7 @@ public class DataLoader implements CommandLineRunner {
 
     private void loadUsers() throws Exception {
         List<UserRow> rows = parseCsv(datasetsPath + "users.csv", UserRow.class);
-        // Pre-compute one BCrypt hash (all CSV users share "hashed_pw_123")
-        String sharedHash = passwordEncoder.encode("hashed_pw_123");
+        String sharedHash = passwordEncoder.encode(seedPassword);
         List<User> users = new ArrayList<>();
         for (UserRow r : rows) {
             User u = new User();

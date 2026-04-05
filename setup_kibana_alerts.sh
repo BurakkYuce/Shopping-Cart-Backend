@@ -1,16 +1,18 @@
 #!/bin/bash
 KIBANA="http://localhost:5601"
+ELASTIC_PASSWORD="${ELASTIC_PASSWORD:-elastic}"
+AUTH=('-u' "elastic:$ELASTIC_PASSWORD")
 H=('-H' 'kbn-xsrf: true' '-H' 'Content-Type: application/json')
 
 echo "⏳ Kibana hazır olana kadar bekleniyor..."
-until curl -s "$KIBANA/api/status" | python3 -c "import sys,json; s=json.load(sys.stdin); exit(0 if s.get('status',{}).get('overall',{}).get('level')=='available' else 1)" 2>/dev/null; do
+until curl -s "${AUTH[@]}" "$KIBANA/api/status" | python3 -c "import sys,json; s=json.load(sys.stdin); exit(0 if s.get('status',{}).get('overall',{}).get('level')=='available' else 1)" 2>/dev/null; do
   echo -n "."; sleep 3
 done
 echo -e "\n✅ Kibana hazır\n"
 
 # ─── 1. Email connector (log-only) ───────────────────────────────────────────
 echo "🔌 Connector oluşturuluyor (server log)..."
-CONNECTOR_ID=$(curl -s -X POST "$KIBANA/api/actions/connector" "${H[@]}" -d '{
+CONNECTOR_ID=$(curl -s "${AUTH[@]}" -X POST "$KIBANA/api/actions/connector" "${H[@]}" -d '{
   "name": "Ecommerce Log Connector",
   "connector_type_id": ".server-log",
   "config": {}
@@ -19,7 +21,7 @@ echo "  Connector ID: $CONNECTOR_ID"
 
 # ─── 2. AUTH_FAILED Spike Alert ──────────────────────────────────────────────
 echo "🚨 AUTH_FAILED spike alert oluşturuluyor..."
-curl -s -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
+curl -s "${AUTH[@]}" -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
   \"name\": \"AUTH_FAILED Spike - Brute Force Detection\",
   \"rule_type_id\": \".es-query\",
   \"consumer\": \"alerts\",
@@ -49,7 +51,7 @@ curl -s -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
 
 # ─── 3. High Response Time Alert ─────────────────────────────────────────────
 echo "⏱️  High response time alert oluşturuluyor..."
-curl -s -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
+curl -s "${AUTH[@]}" -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
   \"name\": \"High API Response Time (>500ms)\",
   \"rule_type_id\": \".es-query\",
   \"consumer\": \"alerts\",
@@ -79,7 +81,7 @@ curl -s -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
 
 # ─── 4. New Order Spike Alert ────────────────────────────────────────────────
 echo "📦 Order spike alert oluşturuluyor..."
-curl -s -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
+curl -s "${AUTH[@]}" -X POST "$KIBANA/api/alerting/rule" "${H[@]}" -d "{
   \"name\": \"Order Spike Detection\",
   \"rule_type_id\": \".es-query\",
   \"consumer\": \"alerts\",

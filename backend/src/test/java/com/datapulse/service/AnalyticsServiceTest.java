@@ -81,9 +81,9 @@ class AnalyticsServiceTest {
         Authentication auth = buildAdminAuth();
 
         LocalDateTime now = LocalDateTime.now();
-        Order o1 = new Order("ord1", "user1", "store1", "completed", 100.0, now, "card");
-        Order o2 = new Order("ord2", "user2", "store1", "completed", 200.0, now, "card");
-        Order o3 = new Order("ord3", "user3", "store1", "completed", 300.0, now, "cash");
+        Order o1 = new Order("ord1", "user1", null, "store1", null, "completed", 100.0, now, "card");
+        Order o2 = new Order("ord2", "user2", null, "store1", null, "completed", 200.0, now, "card");
+        Order o3 = new Order("ord3", "user3", null, "store1", null, "completed", 300.0, now, "cash");
 
         when(orderRepository.findByCreatedAtBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(List.of(o1, o2, o3));
@@ -108,8 +108,8 @@ class AnalyticsServiceTest {
     void getCustomerAnalytics_admin_returnsData() {
         Authentication auth = buildAdminAuth();
 
-        CustomerProfile profile1 = new CustomerProfile("p1", "user1", 30, "Istanbul", "Gold", 500.0, 5, 4.5, "High");
-        CustomerProfile profile2 = new CustomerProfile("p2", "user2", 40, "Istanbul", "Gold", 500.0, 10, 3.8, "Medium");
+        CustomerProfile profile1 = new CustomerProfile("p1", "user1", null, 30, "Istanbul", "Gold", 500.0, 5, 4.5, "High");
+        CustomerProfile profile2 = new CustomerProfile("p2", "user2", null, 40, "Istanbul", "Gold", 500.0, 10, 3.8, "Medium");
 
         when(customerProfileRepository.findAll()).thenReturn(List.of(profile1, profile2));
 

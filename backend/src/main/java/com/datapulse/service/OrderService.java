@@ -123,9 +123,18 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
         double grandTotal = 0.0;
 
+        List<Product> productsToUpdate = new ArrayList<>();
         for (CreateOrderRequest.OrderItemRequest itemReq : req.getItems()) {
             Product product = productRepository.findById(itemReq.getProductId())
                     .orElseThrow(() -> new EntityNotFoundException("Product", itemReq.getProductId()));
+
+            if (product.getStockQuantity() < itemReq.getQuantity()) {
+                throw new IllegalStateException("Insufficient stock for product: " + product.getName()
+                        + " (available: " + product.getStockQuantity() + ", requested: " + itemReq.getQuantity() + ")");
+            }
+
+            product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
+            productsToUpdate.add(product);
 
             double itemPrice = product.getUnitPrice() * itemReq.getQuantity();
             grandTotal += itemPrice;
@@ -151,6 +160,7 @@ public class OrderService {
 
         orderRepository.save(order);
         orderItemRepository.saveAll(orderItems);
+        productRepository.saveAll(productsToUpdate);
 
         logEventPublisher.publish(
                 LogEventType.ORDER_PLACED,
@@ -188,6 +198,72 @@ public class OrderService {
                 currentUser.getId(),
                 role.name(),
                 Map.of("orderId", id, "previousStatus", previousStatus != null ? previousStatus : "", "newStatus", status)
+        );
+
+        return buildOrderResponse(order);
+    }
+
+    public OrderResponse cancelOrder(String id, Authentication auth) {
+        UserDetailsImpl currentUser = getCurrentUser(auth);
+        RoleType role = currentUser.getRole();
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order", id));
+
+        if (role == RoleType.INDIVIDUAL && !order.getUserId().equals(currentUser.getId())) {
+            throw new UnauthorizedAccessException("Access denied: this order does not belong to you");
+        }
+
+        if (!"pending".equals(order.getStatus())) {
+            throw new IllegalStateException("Only pending orders can be cancelled. Current status: " + order.getStatus());
+        }
+
+        // Restore stock
+        List<OrderItem> items = orderItemRepository.findByOrderId(id);
+        for (OrderItem item : items) {
+            Product product = productRepository.findById(item.getProductId()).orElse(null);
+            if (product != null) {
+                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                productRepository.save(product);
+            }
+        }
+
+        order.setStatus("cancelled");
+        orderRepository.save(order);
+
+        logEventPublisher.publish(
+                LogEventType.ORDER_STATUS_CHANGED,
+                currentUser.getId(),
+                role.name(),
+                Map.of("orderId", id, "previousStatus", "pending", "newStatus", "cancelled")
+        );
+
+        return buildOrderResponse(order);
+    }
+
+    public OrderResponse returnOrder(String id, Authentication auth) {
+        UserDetailsImpl currentUser = getCurrentUser(auth);
+        RoleType role = currentUser.getRole();
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Order", id));
+
+        if (role == RoleType.INDIVIDUAL && !order.getUserId().equals(currentUser.getId())) {
+            throw new UnauthorizedAccessException("Access denied: this order does not belong to you");
+        }
+
+        if (!"shipped".equals(order.getStatus()) && !"delivered".equals(order.getStatus())) {
+            throw new IllegalStateException("Only shipped or delivered orders can be returned. Current status: " + order.getStatus());
+        }
+
+        order.setStatus("return_requested");
+        orderRepository.save(order);
+
+        logEventPublisher.publish(
+                LogEventType.ORDER_STATUS_CHANGED,
+                currentUser.getId(),
+                role.name(),
+                Map.of("orderId", id, "previousStatus", order.getStatus(), "newStatus", "return_requested")
         );
 
         return buildOrderResponse(order);

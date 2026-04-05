@@ -16,4 +16,6 @@ public class CreateProductRequest {
     @NotNull @Positive
     private Double unitPrice;
     private String description;
+    private String imageUrl;
+    private Integer stockQuantity;
 }

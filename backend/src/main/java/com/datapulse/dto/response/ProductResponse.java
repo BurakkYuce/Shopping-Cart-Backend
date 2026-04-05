@@ -12,6 +12,8 @@ public class ProductResponse {
     private String name;
     private Double unitPrice;
     private String description;
+    private String imageUrl;
+    private Integer stockQuantity;
 
     public static ProductResponse from(Product product) {
         ProductResponse r = new ProductResponse();
@@ -22,6 +24,8 @@ public class ProductResponse {
         r.name = product.getName();
         r.unitPrice = product.getUnitPrice();
         r.description = product.getDescription();
+        r.imageUrl = product.getImageUrl();
+        r.stockQuantity = product.getStockQuantity();
         return r;
     }
 }
