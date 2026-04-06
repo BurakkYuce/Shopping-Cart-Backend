@@ -3,7 +3,7 @@
   "version": 1,
   "cli": {
     "packageManager": "npm",
-    "analytics": "4d8cc4c3-8ff0-43d3-a8e5-a517a616613c"
+    "analytics": "511e7127-fb02-43d2-8295-851bfd961466"
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -17,6 +17,7 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "polyfills": ["zone.js"],
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [
