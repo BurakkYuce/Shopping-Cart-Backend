@@ -1,0 +1,111 @@
+services:
+
+  # ─── Schemathesis: OpenAPI-driven API Fuzzing ─────────────────────────────
+  schemathesis:
+    image: schemathesis/schemathesis:stable
+    networks:
+      - backend-net
+    volumes:
+      - ./reports:/reports
+    entrypoint: >
+      sh -c '
+        echo "⏳ Waiting for backend...";
+        sleep 10;
+
+        echo "";
+        echo "════════════════════════════════════════════";
+        echo "  SCHEMATHESIS — API Fuzz Testing";
+        echo "════════════════════════════════════════════";
+        echo "";
+
+        echo "🔑 Getting auth token...";
+        TOKEN=$$(
+          wget -qO- --header="Content-Type: application/json" \
+            --post-data="{\"email\":\"admin@datapulse.com\",\"password\":\"changeme\"}" \
+            http://backend:8080/api/auth/login 2>/dev/null |
+          python3 -c "import sys,json; print(json.load(sys.stdin)[\"accessToken\"])" 2>/dev/null
+        );
+
+        if [ -z "$$TOKEN" ]; then
+          echo "❌ Failed to get auth token. Running unauthenticated tests only...";
+          schemathesis run http://backend:8080/api-docs \
+            --checks all \
+            --max-examples 50 \
+            --request-timeout 10 \
+            \
+            2>&1 | tee /reports/schemathesis-unauth.txt;
+        else
+          echo "✅ Token acquired";
+          echo "";
+
+          echo "── Phase 1: Unauthenticated tests (public endpoints) ──";
+          schemathesis run http://backend:8080/api-docs \
+            --checks all \
+            --max-examples 30 \
+            --request-timeout 10 \
+            --include-path-regex "/api/auth/.*" \
+            --include-path-regex "/api/products.*" \
+            --include-path-regex "/api/categories.*" \
+            \
+            2>&1 | tee /reports/schemathesis-unauth.txt;
+
+          echo "";
+          echo "── Phase 2: Authenticated tests (all endpoints) ──";
+          schemathesis run http://backend:8080/api-docs \
+            --checks all \
+            -H "Authorization: Bearer $$TOKEN" \
+            --max-examples 50 \
+            --request-timeout 10 \
+            \
+            2>&1 | tee /reports/schemathesis-auth.txt;
+        fi;
+
+        echo "";
+        echo "✅ Schemathesis complete. Reports in /reports/";
+      '
+
+  # ─── OWASP ZAP: Active Security Scanner ──────────────────────────────────
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    networks:
+      - backend-net
+    volumes:
+      - ./reports:/zap/wrk
+    user: zap
+    entrypoint: >
+      sh -c '
+        echo "⏳ Waiting for backend...";
+        sleep 15;
+
+        echo "";
+        echo "════════════════════════════════════════════";
+        echo "  OWASP ZAP — Security Scan";
+        echo "════════════════════════════════════════════";
+        echo "";
+
+        echo "── Phase 1: Baseline Scan (passive) ──";
+        zap-baseline.py \
+          -t http://backend:8080 \
+          -r zap-baseline.html \
+          -J zap-baseline.json \
+          -I \
+          2>&1 | tee /zap/wrk/zap-baseline.txt;
+
+        echo "";
+        echo "── Phase 2: API Scan (active) ──";
+        zap-api-scan.py \
+          -t http://backend:8080/api-docs \
+          -f openapi \
+          -r zap-api-scan.html \
+          -J zap-api-scan.json \
+          -I \
+          2>&1 | tee /zap/wrk/zap-api-scan.txt;
+
+        echo "";
+        echo "✅ ZAP complete. Reports in /zap/wrk/";
+      '
+
+networks:
+  backend-net:
+    external: true
+    name: shopping-cart-backend_backend-net

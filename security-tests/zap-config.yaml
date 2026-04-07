@@ -1,0 +1,13 @@
+env:
+  contexts:
+    - name: "DataPulse API"
+      urls:
+        - "http://backend:8080"
+      includePaths:
+        - "http://backend:8080/api/.*"
+      excludePaths:
+        - "http://backend:8080/swagger-ui/.*"
+        - "http://backend:8080/api-docs.*"
+  parameters:
+    failOnError: false
+    progressToStdout: true
