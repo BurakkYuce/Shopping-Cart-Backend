@@ -22,7 +22,7 @@ export class Login {
 
   loginForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]]
+    password: ['', [Validators.required]]
   });
 
   onSubmit(): void {
@@ -54,7 +54,7 @@ export class Login {
         this.isSubmitting.set(false);
 
         if (error.status === 400) {
-          this.errorMessage.set('Please check your email and password format.');
+          this.errorMessage.set('Please check your email and password.');
           return;
         }
 
