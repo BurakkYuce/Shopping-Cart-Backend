@@ -1,0 +1,88 @@
+<section class="auth-page">
+  <div class="auth-card">
+    <h1>Register</h1>
+    <p class="subtitle">Create your account</p>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="Enter your email"
+        />
+
+        @if (email.touched && email.invalid) {
+          <div class="field-error">
+            @if (email.errors?.['required']) {
+              <span>Email is required.</span>
+            }
+            @if (email.errors?.['email']) {
+              <span>Please enter a valid email address.</span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="Create a password"
+        />
+
+        @if (password.touched && password.invalid) {
+          <div class="field-error">
+            @if (password.errors?.['required']) {
+              <span>Password is required.</span>
+            }
+            @if (password.errors?.['minlength']) {
+              <span>Password must be at least 6 characters.</span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="roleType">Account Type</label>
+        <select id="roleType" formControlName="roleType">
+          @for (role of roles; track role) {
+            <option [value]="role">{{ role }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="gender">Gender (optional)</label>
+        <input
+          id="gender"
+          type="text"
+          formControlName="gender"
+          placeholder="Enter gender"
+        />
+      </div>
+
+      @if (errorMessage()) {
+        <div class="server-error">
+          {{ errorMessage() }}
+        </div>
+      }
+
+      <button type="submit" class="submit-btn" [disabled]="isSubmitting()">
+        @if (!isSubmitting()) {
+          <span>Register</span>
+        } @else {
+          <span>Creating account...</span>
+        }
+      </button>
+    </form>
+
+    <p class="switch-link">
+      Already have an account?
+      <a routerLink="/login">Login</a>
+    </p>
+  </div>
+</section>
