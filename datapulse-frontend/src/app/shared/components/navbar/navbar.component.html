@@ -1,0 +1,109 @@
+<header class="sticky top-0 z-40 w-full border-b border-outline/60 bg-background/85 backdrop-blur-lg">
+  <div class="mx-auto flex h-20 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+    <!-- Left: logo + primary nav -->
+    <div class="flex items-center gap-10">
+      <a routerLink="/" class="flex items-center gap-2">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-atelier-sm">
+          <span class="material-symbols-outlined text-white" style="font-size: 22px">insights</span>
+        </div>
+        <span class="text-xl font-bold tracking-tight text-text-primary">DataPulse</span>
+      </a>
+      <nav class="hidden items-center gap-8 lg:flex">
+        <a routerLink="/" routerLinkActive="text-primary" [routerLinkActiveOptions]="{exact: true}"
+           class="text-sm font-semibold text-text-primary transition-colors hover:text-primary">Home</a>
+        <a routerLink="/products" routerLinkActive="text-primary"
+           class="text-sm font-semibold text-text-primary transition-colors hover:text-primary">Shop</a>
+        <a routerLink="/visual-search" routerLinkActive="text-primary"
+           class="text-sm font-semibold text-text-primary transition-colors hover:text-primary">Visual Search</a>
+        <a routerLink="/stores" routerLinkActive="text-primary"
+           class="text-sm font-semibold text-text-primary transition-colors hover:text-primary">Curators</a>
+      </nav>
+    </div>
+
+    <!-- Middle: search -->
+    <form class="relative hidden flex-1 max-w-md md:block" (ngSubmit)="search()">
+      <span class="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" style="font-size: 20px">search</span>
+      <input
+        type="search"
+        [ngModel]="query()"
+        (ngModelChange)="query.set($event)"
+        name="q"
+        placeholder="Search curated pieces..."
+        class="h-11 w-full rounded-full bg-background-sub pl-12 pr-4 text-sm text-text-primary placeholder:text-text-tertiary outline-none transition-all focus:bg-background-raised focus:shadow-focus" />
+    </form>
+
+    <!-- Right: icons + auth -->
+    <div class="flex items-center gap-2">
+      <!-- Wishlist -->
+      <a *ngIf="auth.isAuthenticated$() && auth.isCustomer()" routerLink="/wishlist"
+         class="relative flex h-11 w-11 items-center justify-center rounded-full text-text-primary transition-all hover:bg-background-sub"
+         aria-label="Wishlist">
+        <span class="material-symbols-outlined">favorite</span>
+        <span *ngIf="wishlist.count() > 0"
+              class="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+          {{ wishlist.count() }}
+        </span>
+      </a>
+
+      <!-- Cart -->
+      <a *ngIf="auth.isCustomer()" routerLink="/cart"
+         class="relative flex h-11 w-11 items-center justify-center rounded-full text-text-primary transition-all hover:bg-background-sub"
+         aria-label="Cart">
+        <span class="material-symbols-outlined">shopping_bag</span>
+        <span *ngIf="cart.itemCount() > 0"
+              class="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white">
+          {{ cart.itemCount() }}
+        </span>
+      </a>
+
+      <!-- Guest buttons -->
+      <ng-container *ngIf="!auth.isAuthenticated$()">
+        <a routerLink="/auth/login" class="btn-ghost hidden sm:inline-flex">Sign in</a>
+        <a routerLink="/auth/register" class="btn-primary hidden sm:inline-flex">Join DataPulse</a>
+      </ng-container>
+
+      <!-- Logged-in avatar menu -->
+      <div *ngIf="auth.isAuthenticated$()" class="relative">
+        <button (click)="toggleUserMenu()" class="flex h-11 w-11 items-center justify-center rounded-full bg-background-sub transition-all hover:bg-outline" aria-label="Account menu">
+          <span class="material-symbols-outlined text-text-primary">person</span>
+        </button>
+        <div *ngIf="userMenuOpen()" class="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl bg-background-raised shadow-atelier">
+          <ng-container *ngIf="auth.isCustomer()">
+            <a routerLink="/profile" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">account_circle</span>Profile</a>
+            <a routerLink="/orders" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">receipt_long</span>Orders</a>
+            <a routerLink="/addresses" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">pin_drop</span>Addresses</a>
+          </ng-container>
+          <a *ngIf="auth.isSeller()" routerLink="/seller" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">storefront</span>Seller Dashboard</a>
+          <a *ngIf="auth.isAdmin()" routerLink="/admin" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">admin_panel_settings</span>Admin</a>
+          <div class="border-t border-outline/60"></div>
+          <button (click)="logout()" class="flex w-full items-center gap-3 px-5 py-3 text-left text-sm text-danger transition-colors hover:bg-background-sub"><span class="material-symbols-outlined" style="font-size: 20px">logout</span>Sign out</button>
+        </div>
+      </div>
+
+      <!-- Mobile menu toggle -->
+      <button (click)="toggleMobileMenu()" class="flex h-11 w-11 items-center justify-center rounded-full text-text-primary lg:hidden" aria-label="Open menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile menu -->
+  <div *ngIf="mobileMenuOpen()" class="border-t border-outline/60 bg-background-raised lg:hidden">
+    <div class="mx-auto max-w-7xl space-y-1 px-4 py-4">
+      <form class="relative mb-3" (ngSubmit)="search()">
+        <span class="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" style="font-size: 20px">search</span>
+        <input type="search" [ngModel]="query()" (ngModelChange)="query.set($event)" name="q_mobile" placeholder="Search..." class="h-11 w-full rounded-full bg-background-sub pl-12 pr-4 text-sm outline-none" />
+      </form>
+      <a routerLink="/" (click)="toggleMobileMenu()" class="block rounded-xl px-4 py-3 text-sm font-semibold text-text-primary hover:bg-background-sub">Home</a>
+      <a routerLink="/products" (click)="toggleMobileMenu()" class="block rounded-xl px-4 py-3 text-sm font-semibold text-text-primary hover:bg-background-sub">Shop</a>
+      <a routerLink="/visual-search" (click)="toggleMobileMenu()" class="block rounded-xl px-4 py-3 text-sm font-semibold text-text-primary hover:bg-background-sub">Visual Search</a>
+      <a routerLink="/stores" (click)="toggleMobileMenu()" class="block rounded-xl px-4 py-3 text-sm font-semibold text-text-primary hover:bg-background-sub">Curators</a>
+      <ng-container *ngIf="!auth.isAuthenticated$()">
+        <div class="mt-3 flex gap-2 pt-3 border-t border-outline/60">
+          <a routerLink="/auth/login" (click)="toggleMobileMenu()" class="btn-secondary flex-1">Sign in</a>
+          <a routerLink="/auth/register" (click)="toggleMobileMenu()" class="btn-primary flex-1">Join</a>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,145 @@
+<section class="p-8">
+  <!-- Header -->
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-xs font-bold uppercase tracking-wider text-primary">Atelier overview</p>
+      <h1 class="mt-2 text-display-md text-text-primary">Your curation, at a glance.</h1>
+    </div>
+    <div class="flex items-center gap-3">
+      <button class="flex items-center gap-2 rounded-xl bg-background-sub px-4 py-2.5 text-sm font-semibold text-text-primary">
+        <span class="material-symbols-outlined" style="font-size: 18px">calendar_today</span>
+        {{ todayLabel }}
+      </button>
+      <a routerLink="/seller/products" class="btn-primary">
+        <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+        Add piece
+      </a>
+    </div>
+  </header>
+
+  <app-spinner *ngIf="loading()"></app-spinner>
+
+  <!-- KPI cards -->
+  <div *ngIf="!loading()" class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-bold uppercase tracking-wider text-text-tertiary">Total revenue</p>
+        <span class="material-symbols-outlined text-primary">payments</span>
+      </div>
+      <p class="mt-3 text-3xl font-bold text-text-primary">${{ sales()?.totalRevenue ?? 0 | number:'1.2-2' }}</p>
+      <p class="mt-1 text-xs text-text-tertiary">All time</p>
+    </div>
+    <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-bold uppercase tracking-wider text-text-tertiary">Total orders</p>
+        <span class="material-symbols-outlined text-primary">receipt_long</span>
+      </div>
+      <p class="mt-3 text-3xl font-bold text-text-primary">{{ sales()?.orderCount ?? 0 }}</p>
+      <p class="mt-1 text-xs text-text-tertiary">All time</p>
+    </div>
+    <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-bold uppercase tracking-wider text-text-tertiary">Pending</p>
+        <span class="material-symbols-outlined text-warning">pending_actions</span>
+      </div>
+      <p class="mt-3 text-3xl font-bold text-text-primary">{{ pendingOrders() }}</p>
+      <p class="mt-1 text-xs text-text-tertiary">Needs action</p>
+    </div>
+    <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+      <div class="flex items-center justify-between">
+        <p class="text-xs font-bold uppercase tracking-wider text-text-tertiary">Avg order value</p>
+        <span class="material-symbols-outlined text-primary">shopping_bag</span>
+      </div>
+      <p class="mt-3 text-3xl font-bold text-text-primary">${{ sales()?.averageOrderValue ?? 0 | number:'1.2-2' }}</p>
+      <p class="mt-1 text-xs text-text-tertiary">Across orders</p>
+    </div>
+  </div>
+
+  <!-- Editorial grid -->
+  <div *ngIf="!loading()" class="mt-8 grid gap-6 lg:grid-cols-12">
+    <!-- Revenue chart (8 cols) -->
+    <div class="rounded-3xl bg-background-raised p-7 shadow-atelier-sm lg:col-span-8">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Revenue trend</h3>
+          <p class="mt-1 text-xs text-text-tertiary">Last 7 periods</p>
+        </div>
+        <select class="rounded-xl bg-background-sub px-3 py-2 text-xs font-semibold outline-none">
+          <option>Monthly</option>
+          <option>Weekly</option>
+        </select>
+      </div>
+      <div class="mt-6 flex items-end gap-4 h-48">
+        <ng-container *ngIf="revenueBars().length > 0">
+          <div *ngFor="let bar of revenueBars()" class="flex flex-1 flex-col items-center gap-2">
+            <div class="w-full rounded-t-xl bg-primary transition-all hover:bg-primary-hover"
+                 [style.height.%]="(bar.value / maxRevenue()) * 100"
+                 [title]="bar.period + ': $' + bar.value"></div>
+            <span class="text-[11px] text-text-tertiary">{{ bar.period }}</span>
+          </div>
+        </ng-container>
+        <div *ngIf="revenueBars().length === 0" class="flex w-full flex-col items-center justify-center text-sm text-text-tertiary">
+          <span class="material-symbols-outlined" style="font-size: 32px">bar_chart</span>
+          <p class="mt-2">No revenue data yet</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick actions (4 cols) -->
+    <div class="rounded-3xl bg-background-raised p-7 shadow-atelier-sm lg:col-span-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Quick actions</h3>
+        <span class="material-symbols-outlined text-primary" style="font-size: 20px">bolt</span>
+      </div>
+      <div class="mt-4 space-y-3">
+        <a routerLink="/seller/products" class="flex items-center gap-3 rounded-xl bg-background-sub p-3 hover:bg-background-hover">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <span class="material-symbols-outlined text-primary" style="font-size: 18px">inventory_2</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-text-primary">Manage products</p>
+            <p class="text-xs text-text-tertiary">Add or edit pieces</p>
+          </div>
+        </a>
+        <a routerLink="/seller/orders" class="flex items-center gap-3 rounded-xl bg-background-sub p-3 hover:bg-background-hover">
+          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10">
+            <span class="material-symbols-outlined text-primary" style="font-size: 18px">local_shipping</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-text-primary">Ship orders</p>
+            <p class="text-xs text-text-tertiary">{{ pendingOrders() }} pending</p>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent shipments -->
+  <div *ngIf="!loading()" class="mt-8 rounded-3xl bg-background-raised p-7 shadow-atelier-sm">
+    <div class="flex items-center justify-between">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Recent orders</h3>
+      <a routerLink="/seller/orders" class="text-xs font-semibold text-primary hover:underline">View all →</a>
+    </div>
+    <table class="mt-5 w-full">
+      <thead class="text-left">
+        <tr class="border-b border-outline/60">
+          <th class="pb-3 text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Order</th>
+          <th class="pb-3 text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Date</th>
+          <th class="pb-3 text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Total</th>
+          <th class="pb-3 text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let o of recentOrders()" class="border-b border-outline/30 last:border-0">
+          <td class="py-4 font-mono text-sm font-bold text-text-primary">#{{ o.id }}</td>
+          <td class="py-4 text-sm text-text-secondary">{{ o.createdAt | date:'mediumDate' }}</td>
+          <td class="py-4 text-sm font-semibold text-text-primary">${{ o.grandTotal | number:'1.2-2' }}</td>
+          <td class="py-4"><app-status-badge [status]="o.status"></app-status-badge></td>
+        </tr>
+        <tr *ngIf="recentOrders().length === 0">
+          <td colspan="4" class="py-8 text-center text-sm text-text-tertiary">No recent orders.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>

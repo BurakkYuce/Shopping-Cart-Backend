@@ -1,0 +1,144 @@
+<section class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+  <h1 class="text-display-md text-text-primary">Account</h1>
+
+  <div class="mt-8 grid gap-8 lg:grid-cols-[320px_1fr]">
+    <!-- Left column: avatar + member info -->
+    <aside class="space-y-6">
+      <div class="rounded-3xl bg-background-raised p-6 text-center shadow-atelier-sm">
+        <div class="relative mx-auto h-32 w-32">
+          <div class="h-full w-full overflow-hidden rounded-full bg-background-sub shadow-atelier-sm">
+            <div class="flex h-full w-full items-center justify-center text-text-tertiary">
+              <span class="material-symbols-outlined" style="font-size: 64px">person</span>
+            </div>
+          </div>
+        </div>
+        <h3 class="mt-5 text-lg font-bold text-text-primary">{{ me()?.email || 'Guest' }}</h3>
+        <p class="mt-1 text-xs text-text-tertiary">{{ profile()?.membershipType || 'Member' }}</p>
+      </div>
+
+      <div class="rounded-2xl bg-background-sub p-5">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-text-primary">Account analytics</h4>
+        <dl class="mt-4 space-y-3 text-sm">
+          <div class="flex justify-between"><dt class="text-text-secondary">Orders</dt><dd class="font-bold text-text-primary">—</dd></div>
+          <div class="flex justify-between"><dt class="text-text-secondary">Saved</dt><dd class="font-bold text-text-primary">—</dd></div>
+          <div class="flex justify-between"><dt class="text-text-secondary">Addresses</dt><dd class="font-bold text-text-primary">—</dd></div>
+        </dl>
+      </div>
+
+      <button (click)="logout()" class="btn-ghost w-full justify-start text-danger">
+        <span class="material-symbols-outlined" style="font-size: 18px">logout</span>Sign out
+      </button>
+    </aside>
+
+    <!-- Right column: tabs -->
+    <div>
+      <div class="flex gap-1 rounded-2xl bg-background-sub p-1">
+        <button (click)="setTab('personal')" class="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all"
+                [class.bg-background-raised]="tab() === 'personal'" [class.shadow-atelier-sm]="tab() === 'personal'"
+                [class.text-text-primary]="tab() === 'personal'" [class.text-text-secondary]="tab() !== 'personal'">
+          Personal info
+        </button>
+        <button (click)="setTab('security')" class="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all"
+                [class.bg-background-raised]="tab() === 'security'" [class.shadow-atelier-sm]="tab() === 'security'"
+                [class.text-text-primary]="tab() === 'security'" [class.text-text-secondary]="tab() !== 'security'">
+          Security
+        </button>
+        <button (click)="setTab('notifications')" class="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all"
+                [class.bg-background-raised]="tab() === 'notifications'" [class.shadow-atelier-sm]="tab() === 'notifications'"
+                [class.text-text-primary]="tab() === 'notifications'" [class.text-text-secondary]="tab() !== 'notifications'">
+          Notifications
+        </button>
+      </div>
+
+      <!-- Personal -->
+      <form *ngIf="tab() === 'personal'" [formGroup]="personalForm" (ngSubmit)="savePersonal()" class="mt-6 rounded-3xl bg-background-raised p-8 shadow-atelier-sm">
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div><label class="label-base">Age</label><input formControlName="age" type="number" class="input-base" /></div>
+          <div><label class="label-base">City</label><input formControlName="city" class="input-base" /></div>
+          <div>
+            <label class="label-base">Membership</label>
+            <select formControlName="membershipType" class="input-base">
+              <option value="">Standard</option>
+              <option value="BASIC">Basic</option>
+              <option value="PREMIUM">Premium</option>
+              <option value="VIP">VIP</option>
+            </select>
+          </div>
+          <div>
+            <label class="label-base">Gender</label>
+            <select formControlName="gender" class="input-base">
+              <option value="">Prefer not to say</option>
+              <option value="FEMALE">Female</option>
+              <option value="MALE">Male</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button type="submit" [disabled]="loading()" class="btn-primary">Save profile</button>
+        </div>
+      </form>
+
+      <!-- Security -->
+      <div *ngIf="tab() === 'security'" class="mt-6 space-y-4">
+        <form [formGroup]="securityForm" (ngSubmit)="saveSecurity()" class="rounded-3xl bg-background-raised p-8 shadow-atelier-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Change password</h3>
+          <div class="mt-5 grid gap-5">
+            <div><label class="label-base">Current password</label><input type="password" formControlName="currentPassword" class="input-base" /></div>
+            <div><label class="label-base">New password</label><input type="password" formControlName="newPassword" class="input-base" /></div>
+            <div><label class="label-base">Confirm new password</label><input type="password" formControlName="confirmPassword" class="input-base" /></div>
+          </div>
+          <div class="mt-6 flex justify-end">
+            <button type="submit" class="btn-primary">Update password</button>
+          </div>
+        </form>
+
+        <div class="rounded-3xl bg-background-raised p-8 shadow-atelier-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Two-factor authentication</h3>
+          <p class="mt-3 text-sm text-text-secondary">Add an extra layer of security to your account.</p>
+          <button class="btn-secondary mt-5">Enable 2FA</button>
+        </div>
+
+        <div class="rounded-3xl bg-background-raised p-8 shadow-atelier-sm">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Connected devices</h3>
+          <div class="mt-5 space-y-3">
+            <div class="flex items-center gap-4 rounded-xl bg-background-sub p-4">
+              <span class="material-symbols-outlined text-primary">laptop_mac</span>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-text-primary">Current browser</p>
+                <p class="text-xs text-text-tertiary">Active now</p>
+              </div>
+              <span class="chip-primary">Active</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div *ngIf="tab() === 'notifications'" class="mt-6 rounded-3xl bg-background-raised p-8 shadow-atelier-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Notification preferences</h3>
+        <div class="mt-5 space-y-4">
+          <label *ngFor="let pref of [
+            {key: 'orderUpdates', label: 'Order updates', desc: 'Status changes and delivery alerts'},
+            {key: 'newArrivals', label: 'New arrivals', desc: 'Fresh pieces from curators you follow'},
+            {key: 'promotions', label: 'Promotions', desc: 'Special offers and limited drops'},
+            {key: 'newsletter', label: 'Weekly newsletter', desc: 'The Curated Dispatch — one note a week'}
+          ]" class="flex items-center justify-between rounded-xl bg-background-sub p-4">
+            <div>
+              <p class="text-sm font-semibold text-text-primary">{{ pref.label }}</p>
+              <p class="text-xs text-text-tertiary">{{ pref.desc }}</p>
+            </div>
+            <button type="button" (click)="togglePref(pref.key)"
+                    class="relative h-6 w-11 rounded-full transition-all"
+                    [class.bg-primary]="isPrefEnabled(pref.key)"
+                    [class.bg-outline]="!isPrefEnabled(pref.key)">
+              <span class="absolute top-0.5 flex h-5 w-5 rounded-full bg-white shadow-atelier-sm transition-all"
+                    [class.left-5]="isPrefEnabled(pref.key)"
+                    [class.left-0\.5]="!isPrefEnabled(pref.key)"></span>
+            </button>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

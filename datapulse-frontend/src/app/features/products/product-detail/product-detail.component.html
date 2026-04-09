@@ -1,0 +1,239 @@
+<app-spinner *ngIf="loading()"></app-spinner>
+
+<article *ngIf="!loading() && product() as p" class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  <!-- Breadcrumb -->
+  <nav class="mb-6 flex items-center gap-2 text-sm text-text-secondary">
+    <a routerLink="/" class="hover:text-primary">Home</a>
+    <span class="material-symbols-outlined text-text-tertiary" style="font-size: 14px">chevron_right</span>
+    <a routerLink="/products" class="hover:text-primary">Shop</a>
+    <span class="material-symbols-outlined text-text-tertiary" style="font-size: 14px">chevron_right</span>
+    <span class="text-text-primary">{{ p.name }}</span>
+  </nav>
+
+  <div class="grid grid-cols-12 gap-8">
+    <!-- Gallery (col-span-7) -->
+    <div class="col-span-12 lg:col-span-7">
+      <div class="grid grid-cols-6 gap-4">
+        <div class="col-span-6 aspect-square overflow-hidden rounded-3xl bg-background-sub shadow-atelier-sm">
+          <img *ngIf="p.imageUrl" [src]="p.imageUrl" [alt]="p.name" class="h-full w-full object-cover" />
+          <div *ngIf="!p.imageUrl" class="flex h-full w-full items-center justify-center text-text-tertiary">
+            <span class="material-symbols-outlined" style="font-size: 96px">image</span>
+          </div>
+        </div>
+        <!-- Thumbnail strip — shown only when product has an image -->
+        <button *ngIf="p.imageUrl" (click)="selectImage(0)"
+                class="col-span-1 aspect-square overflow-hidden rounded-xl bg-background-sub transition-all ring-2 ring-primary">
+          <img [src]="p.imageUrl" [alt]="p.name" class="h-full w-full object-cover opacity-80" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Info (col-span-5) -->
+    <div class="col-span-12 space-y-6 lg:col-span-5">
+      <!-- Badges -->
+      <div class="flex flex-wrap gap-2">
+        <span *ngIf="discountPct()" class="chip-primary">Save {{ discountPct() }}%</span>
+        <span *ngIf="p.stockQuantity <= 5 && p.stockQuantity > 0" class="chip bg-warning/10 text-warning">Only {{ p.stockQuantity }} left</span>
+        <span class="chip">{{ p.sku }}</span>
+      </div>
+
+      <!-- Title -->
+      <div>
+        <p *ngIf="p.brand" class="text-sm font-semibold uppercase tracking-wider text-text-tertiary">{{ p.brand }}</p>
+        <h1 class="mt-1 text-display-sm text-text-primary">{{ p.name }}</h1>
+        <div class="mt-3 flex items-center gap-3">
+          <app-star-rating [rating]="p.rating ?? 0" [size]="18"></app-star-rating>
+          <span class="text-sm text-text-secondary">{{ p.rating ? (p.rating | number:'1.1-1') : '—' }}</span>
+          <span class="text-sm text-text-tertiary">·</span>
+          <a href="#reviews" class="text-sm text-text-secondary hover:text-primary">{{ reviews().length }} reviews</a>
+        </div>
+      </div>
+
+      <!-- Price card -->
+      <div class="rounded-2xl bg-background-accent p-6">
+        <div class="flex items-baseline gap-3">
+          <span class="text-4xl font-bold text-primary">${{ p.unitPrice | number:'1.2-2' }}</span>
+          <span *ngIf="p.retailPrice && p.retailPrice > p.unitPrice" class="text-lg text-text-tertiary line-through">${{ p.retailPrice | number:'1.2-2' }}</span>
+          <span *ngIf="discountPct()" class="rounded-full bg-primary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">SAVE {{ discountPct() }}%</span>
+        </div>
+        <p class="mt-2 text-xs text-text-secondary">Free shipping on orders over $100 · Tax calculated at checkout</p>
+      </div>
+
+      <!-- Quantity + stock -->
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 rounded-full bg-background-sub p-1">
+          <button (click)="decrementQty()" class="flex h-9 w-9 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Decrease quantity">
+            <span class="material-symbols-outlined" style="font-size: 18px">remove</span>
+          </button>
+          <span class="min-w-[2rem] text-center font-bold text-text-primary">{{ quantity() }}</span>
+          <button (click)="incrementQty()" class="flex h-9 w-9 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Increase quantity">
+            <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+          </button>
+        </div>
+        <span *ngIf="p.stockQuantity > 0" class="chip bg-success/10 text-success">
+          <span class="material-symbols-outlined" style="font-size: 14px">check_circle</span>In stock
+        </span>
+        <span *ngIf="p.stockQuantity <= 0" class="chip bg-danger/10 text-danger">Sold out</span>
+      </div>
+
+      <!-- CTAs -->
+      <div class="flex gap-3">
+        <button (click)="addToCart()" [disabled]="addingToCart() || p.stockQuantity <= 0" class="btn-primary flex-1 h-14">
+          <span *ngIf="!addingToCart()" class="material-symbols-outlined" style="font-size: 20px">shopping_bag</span>
+          <span *ngIf="!addingToCart()">Add to bag</span>
+          <span *ngIf="addingToCart()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+        </button>
+        <button (click)="toggleWishlist()" class="flex h-14 w-14 items-center justify-center rounded-xl bg-background-sub transition-all hover:bg-outline" [attr.aria-label]="isInWishlist() ? 'Remove from wishlist' : 'Add to wishlist'">
+          <span class="material-symbols-outlined" [class.filled]="isInWishlist()" [class.text-primary]="isInWishlist()">favorite</span>
+        </button>
+      </div>
+
+      <!-- Trust row -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <div class="flex items-center gap-3 rounded-xl bg-background-sub p-4">
+          <span class="material-symbols-outlined text-primary">local_shipping</span>
+          <div>
+            <p class="text-xs font-bold text-text-primary">Fast delivery</p>
+            <p class="text-[11px] text-text-secondary">Ships in 1–2 days</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 rounded-xl bg-background-sub p-4">
+          <span class="material-symbols-outlined text-primary">verified_user</span>
+          <div>
+            <p class="text-xs font-bold text-text-primary">2-year warranty</p>
+            <p class="text-[11px] text-text-secondary">Maker-backed</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <section class="mt-16 grid grid-cols-12 gap-8">
+    <div class="col-span-12 lg:col-span-8">
+      <div class="flex gap-1 rounded-2xl bg-background-sub p-1">
+        <button *ngFor="let t of ['description','specs','reviews','qa']"
+                (click)="setTab($any(t))"
+                class="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold capitalize transition-all"
+                [class.bg-background-raised]="tab() === t"
+                [class.shadow-atelier-sm]="tab() === t"
+                [class.text-text-primary]="tab() === t"
+                [class.text-text-secondary]="tab() !== t">
+          {{ t === 'qa' ? 'Q&A' : t }}
+        </button>
+      </div>
+
+      <div class="mt-6 rounded-2xl bg-background-raised p-8 shadow-atelier-sm">
+        <div *ngIf="tab() === 'description'">
+          <p class="whitespace-pre-wrap leading-relaxed text-text-secondary">{{ p.description || 'No description provided.' }}</p>
+        </div>
+        <div *ngIf="tab() === 'specs'">
+          <dl class="grid grid-cols-2 gap-4 text-sm">
+            <dt class="font-semibold text-text-primary">SKU</dt><dd class="text-text-secondary">{{ p.sku }}</dd>
+            <dt class="font-semibold text-text-primary">Brand</dt><dd class="text-text-secondary">{{ p.brand || '—' }}</dd>
+            <dt class="font-semibold text-text-primary">Stock</dt><dd class="text-text-secondary">{{ p.stockQuantity }} units</dd>
+            <dt class="font-semibold text-text-primary">Category</dt><dd class="text-text-secondary">#{{ p.categoryId }}</dd>
+          </dl>
+        </div>
+        <div *ngIf="tab() === 'reviews'" id="reviews">
+
+          <!-- Write a review form -->
+          <div *ngIf="!reviewSuccess()" class="mb-8 rounded-2xl border border-outline/60 p-6">
+            <h4 class="text-sm font-bold text-text-primary">Write a review</h4>
+            <p class="mt-1 text-xs text-text-tertiary">Only available after receiving your order.</p>
+
+            <!-- Star picker -->
+            <div class="mt-4 flex gap-1">
+              <button *ngFor="let star of [1,2,3,4,5]"
+                      (click)="setReviewRating(star)"
+                      class="text-text-tertiary transition-colors"
+                      [class.text-primary]="star <= reviewRating()"
+                      [attr.aria-label]="star + ' stars'">
+                <span class="material-symbols-outlined" [class.filled]="star <= reviewRating()" style="font-size: 28px">star</span>
+              </button>
+            </div>
+
+            <input type="text" placeholder="Headline (optional)"
+                   [value]="reviewHeadline()"
+                   (input)="reviewHeadline.set($any($event.target).value)"
+                   class="input-base mt-4 w-full" />
+
+            <textarea placeholder="Share your experience..."
+                      [value]="reviewText()"
+                      (input)="reviewText.set($any($event.target).value)"
+                      rows="3"
+                      class="input-base mt-3 w-full resize-none"></textarea>
+
+            <!-- Error -->
+            <div *ngIf="reviewError()" class="mt-3 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
+              {{ reviewError() }}
+            </div>
+
+            <button (click)="submitReview()"
+                    [disabled]="reviewRating() === 0 || submittingReview()"
+                    class="btn-primary mt-4 disabled:opacity-50">
+              <span *ngIf="submittingReview()" class="material-symbols-outlined animate-spin" style="font-size: 16px">progress_activity</span>
+              {{ submittingReview() ? 'Submitting…' : 'Submit review' }}
+            </button>
+          </div>
+
+          <!-- Success state -->
+          <div *ngIf="reviewSuccess()" class="mb-8 flex items-center gap-3 rounded-2xl bg-success/10 px-5 py-4 text-sm text-success">
+            <span class="material-symbols-outlined">check_circle</span>
+            Thank you! Your review has been published.
+          </div>
+
+          <div *ngIf="reviews().length === 0" class="py-8 text-center text-sm text-text-secondary">No reviews yet. Be the first!</div>
+          <div *ngFor="let r of reviews()" class="border-b border-outline/60 py-5 last:border-0">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-background-sub text-sm font-bold text-text-primary">
+                U
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-text-primary">{{ r.reviewHeadline || 'Anonymous' }}</p>
+                <app-star-rating [rating]="r.starRating" [size]="12"></app-star-rating>
+              </div>
+              <span class="ml-auto text-xs text-text-tertiary">{{ r.reviewDate | date:'mediumDate' }}</span>
+            </div>
+            <p *ngIf="r.reviewText" class="mt-3 text-sm leading-relaxed text-text-secondary">{{ r.reviewText }}</p>
+          </div>
+        </div>
+        <div *ngIf="tab() === 'qa'" class="text-sm text-text-secondary">
+          No questions yet. Be the first to ask about this piece.
+        </div>
+      </div>
+    </div>
+
+    <!-- Review summary -->
+    <aside class="col-span-12 lg:col-span-4">
+      <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Rating summary</h3>
+        <div class="mt-4 flex items-center gap-4">
+          <div>
+            <p class="text-5xl font-bold text-text-primary">{{ avgRating() | number:'1.1-1' }}</p>
+            <app-star-rating [rating]="avgRating()" [size]="14"></app-star-rating>
+          </div>
+          <p class="text-sm text-text-secondary">Based on<br><span class="font-semibold text-text-primary">{{ reviews().length }} reviews</span></p>
+        </div>
+        <div class="mt-6 space-y-2">
+          <div *ngFor="let d of ratingDistribution()" class="flex items-center gap-2 text-xs">
+            <span class="w-4 font-semibold text-text-primary">{{ d.star }}</span>
+            <span class="material-symbols-outlined filled text-primary" style="font-size: 12px">star</span>
+            <div class="h-2 flex-1 overflow-hidden rounded-full bg-background-sub">
+              <div class="h-full bg-primary" [style.width.%]="d.pct"></div>
+            </div>
+            <span class="w-8 text-right text-text-tertiary">{{ d.count }}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Related -->
+  <section class="mt-20">
+    <h2 class="text-display-md text-text-primary">You might also love</h2>
+    <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <app-product-card *ngFor="let r of related()" [product]="r"></app-product-card>
+    </div>
+  </section>
+</article>

@@ -1,0 +1,209 @@
+<section class="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+  <!-- Step indicator -->
+  <div class="mb-10">
+    <div class="flex items-center justify-between">
+      <div *ngFor="let s of [1,2,3,4]; let i = index" class="flex flex-1 items-center">
+        <div class="flex flex-col items-center">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold transition-all"
+               [class.bg-primary]="step() >= s"
+               [class.text-white]="step() >= s"
+               [class.bg-background-sub]="step() < s"
+               [class.text-text-tertiary]="step() < s">
+            <span *ngIf="step() > s" class="material-symbols-outlined" style="font-size: 20px">check</span>
+            <span *ngIf="step() <= s">{{ s }}</span>
+          </div>
+          <p class="mt-2 text-[11px] font-semibold uppercase tracking-wider"
+             [class.text-text-primary]="step() >= s"
+             [class.text-text-tertiary]="step() < s">
+            {{ s === 1 ? 'Address' : s === 2 ? 'Payment' : s === 3 ? 'Review' : 'Confirm' }}
+          </p>
+        </div>
+        <div *ngIf="i < 3" class="mx-2 h-0.5 flex-1 transition-colors"
+             [class.bg-primary]="step() > s"
+             [class.bg-background-sub]="step() <= s"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid gap-8 lg:grid-cols-[1fr_380px]">
+    <!-- Main column -->
+    <div>
+      <!-- STEP 1: Address -->
+      <div *ngIf="step() === 1">
+        <h2 class="text-display-sm text-text-primary">Shipping address</h2>
+        <p class="mt-1 text-sm text-text-secondary">Choose where we should deliver your order.</p>
+
+        <div *ngIf="addresses().length > 0" class="mt-6 grid gap-4 sm:grid-cols-2">
+          <button *ngFor="let addr of addresses()" (click)="selectAddress(addr.id)"
+                  class="text-left rounded-2xl bg-background-raised p-5 shadow-atelier-sm transition-all ring-2"
+                  [class.ring-primary]="selectedAddressId() === addr.id"
+                  [class.ring-transparent]="selectedAddressId() !== addr.id">
+            <div class="flex items-center justify-between">
+              <span class="chip-primary">{{ addr.title }}</span>
+              <span *ngIf="addr.isDefault" class="text-[11px] font-semibold text-text-tertiary">DEFAULT</span>
+            </div>
+            <p class="mt-3 text-sm font-semibold text-text-primary">{{ addr.fullName }}</p>
+            <p class="mt-1 text-xs text-text-secondary">{{ addr.addressLine1 }}<br />{{ addr.district }}, {{ addr.city }} {{ addr.zipCode }}</p>
+            <p class="mt-2 text-xs text-text-tertiary">{{ addr.phone }}</p>
+          </button>
+        </div>
+
+        <!-- Add new -->
+        <button (click)="toggleNewAddress()"
+                class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-outline bg-background-raised p-6 text-sm font-semibold text-primary transition-all hover:bg-background-accent">
+          <span class="material-symbols-outlined" style="font-size: 20px">{{ showNewAddressForm() ? 'close' : 'add' }}</span>
+          {{ showNewAddressForm() ? 'Cancel' : 'Add new address' }}
+        </button>
+
+        <form *ngIf="showNewAddressForm()" [formGroup]="addressForm" (ngSubmit)="saveNewAddress()" class="mt-6 rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2"><label class="label-base">Address title</label><input formControlName="title" placeholder="Home, Studio..." class="input-base" /></div>
+            <div><label class="label-base">Full name</label><input formControlName="fullName" class="input-base" /></div>
+            <div><label class="label-base">Phone</label><input formControlName="phone" class="input-base" /></div>
+            <div class="sm:col-span-2"><label class="label-base">Address line 1</label><input formControlName="addressLine1" class="input-base" /></div>
+            <div class="sm:col-span-2"><label class="label-base">Address line 2 (optional)</label><input formControlName="addressLine2" class="input-base" /></div>
+            <div><label class="label-base">City</label><input formControlName="city" class="input-base" /></div>
+            <div><label class="label-base">District</label><input formControlName="district" class="input-base" /></div>
+            <div><label class="label-base">Zip code</label><input formControlName="zipCode" class="input-base" /></div>
+            <div><label class="label-base">Country</label><input formControlName="country" class="input-base" /></div>
+          </div>
+          <label class="mt-4 flex items-center gap-2 text-sm text-text-secondary">
+            <input type="checkbox" formControlName="isDefault" class="h-4 w-4 rounded border-outline text-primary focus:ring-primary" />
+            Set as default address
+          </label>
+          <div class="mt-5 flex gap-2">
+            <button type="submit" [disabled]="loading()" class="btn-primary">Save address</button>
+          </div>
+        </form>
+
+        <div class="mt-8 flex justify-end">
+          <button (click)="nextStep()" class="btn-primary">Continue to payment <span class="material-symbols-outlined" style="font-size: 20px">arrow_forward</span></button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Payment -->
+      <div *ngIf="step() === 2">
+        <h2 class="text-display-sm text-text-primary">Payment method</h2>
+        <p class="mt-1 text-sm text-text-secondary">How would you like to pay?</p>
+
+        <div class="mt-6 grid gap-3">
+          <button (click)="setPayment('credit_card')" class="flex items-center gap-4 rounded-2xl bg-background-raised p-5 text-left shadow-atelier-sm ring-2 transition-all"
+                  [class.ring-primary]="paymentMethod() === 'credit_card'"
+                  [class.ring-transparent]="paymentMethod() !== 'credit_card'">
+            <span class="material-symbols-outlined text-primary">credit_card</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-text-primary">Credit / Debit card</p>
+              <p class="text-xs text-text-secondary">Visa, Mastercard, Amex</p>
+            </div>
+          </button>
+          <button (click)="setPayment('bank_transfer')" class="flex items-center gap-4 rounded-2xl bg-background-raised p-5 text-left shadow-atelier-sm ring-2 transition-all"
+                  [class.ring-primary]="paymentMethod() === 'bank_transfer'"
+                  [class.ring-transparent]="paymentMethod() !== 'bank_transfer'">
+            <span class="material-symbols-outlined text-primary">account_balance</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-text-primary">Bank transfer</p>
+              <p class="text-xs text-text-secondary">EFT/Havale</p>
+            </div>
+          </button>
+          <button (click)="setPayment('cash_on_delivery')" class="flex items-center gap-4 rounded-2xl bg-background-raised p-5 text-left shadow-atelier-sm ring-2 transition-all"
+                  [class.ring-primary]="paymentMethod() === 'cash_on_delivery'"
+                  [class.ring-transparent]="paymentMethod() !== 'cash_on_delivery'">
+            <span class="material-symbols-outlined text-primary">payments</span>
+            <div class="flex-1">
+              <p class="text-sm font-semibold text-text-primary">Cash on delivery</p>
+              <p class="text-xs text-text-secondary">Pay when your order arrives</p>
+            </div>
+          </button>
+        </div>
+
+        <form *ngIf="paymentMethod() === 'credit_card'" [formGroup]="cardForm" class="mt-6 rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="sm:col-span-2"><label class="label-base">Card number</label><input formControlName="cardNumber" placeholder="1234 5678 9012 3456" class="input-base" /></div>
+            <div class="sm:col-span-2"><label class="label-base">Name on card</label><input formControlName="cardName" class="input-base" /></div>
+            <div><label class="label-base">Expiry (MM/YY)</label><input formControlName="expiry" placeholder="12/28" class="input-base" /></div>
+            <div><label class="label-base">CVV</label><input formControlName="cvv" placeholder="123" class="input-base" /></div>
+          </div>
+        </form>
+
+        <label class="mt-6 flex items-center gap-2 text-sm text-text-secondary">
+          <input type="checkbox" [checked]="sameAsShipping()" (change)="toggleSameAsShipping()" class="h-4 w-4 rounded border-outline text-primary focus:ring-primary" />
+          Billing address is the same as shipping
+        </label>
+
+        <div *ngIf="!sameAsShipping()" class="mt-4 grid gap-3 sm:grid-cols-2">
+          <button *ngFor="let addr of addresses()" (click)="selectBilling(addr.id)"
+                  class="text-left rounded-2xl bg-background-raised p-4 shadow-atelier-sm ring-2 transition-all"
+                  [class.ring-primary]="selectedBillingId() === addr.id"
+                  [class.ring-transparent]="selectedBillingId() !== addr.id">
+            <p class="text-sm font-semibold text-text-primary">{{ addr.title }}</p>
+            <p class="text-xs text-text-secondary">{{ addr.addressLine1 }}, {{ addr.city }}</p>
+          </button>
+        </div>
+
+        <div class="mt-8 flex items-center justify-between">
+          <button (click)="prevStep()" class="btn-ghost"><span class="material-symbols-outlined" style="font-size: 20px">arrow_back</span>Back</button>
+          <button (click)="nextStep()" class="btn-primary">Review order <span class="material-symbols-outlined" style="font-size: 20px">arrow_forward</span></button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Review -->
+      <div *ngIf="step() === 3">
+        <h2 class="text-display-sm text-text-primary">Review & place</h2>
+        <p class="mt-1 text-sm text-text-secondary">One last look before we ship.</p>
+
+        <div class="mt-6 space-y-4">
+          <div class="rounded-2xl bg-background-raised p-5 shadow-atelier-sm">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Items ({{ cart.cartSig().totalItems }})</h3>
+            <div class="mt-4 space-y-3">
+              <div *ngFor="let item of cart.cartSig().items" class="flex items-center gap-4">
+                <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-background-sub">
+                  <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.productName" class="h-full w-full object-cover" />
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-text-primary">{{ item.productName }}</p>
+                  <p class="text-xs text-text-tertiary">Qty {{ item.quantity }} × ${{ item.unitPrice | number:'1.2-2' }}</p>
+                </div>
+                <p class="text-sm font-bold text-text-primary">${{ item.lineTotal | number:'1.2-2' }}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-background-raised p-5 shadow-atelier-sm">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-text-primary">Order notes (optional)</h3>
+            <textarea [value]="notes()" (input)="notes.set($any($event.target).value)" rows="3" placeholder="Special instructions for our curators..." class="mt-3 input-base resize-none"></textarea>
+          </div>
+        </div>
+
+        <div class="mt-8 flex items-center justify-between">
+          <button (click)="prevStep()" class="btn-ghost"><span class="material-symbols-outlined" style="font-size: 20px">arrow_back</span>Back</button>
+          <button (click)="placeOrder()" [disabled]="loading()" class="btn-primary">
+            <span *ngIf="!loading()" class="material-symbols-outlined" style="font-size: 20px">lock</span>
+            <span *ngIf="!loading()">Place order · ${{ total() | number:'1.2-2' }}</span>
+            <span *ngIf="loading()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky order summary -->
+    <aside class="h-fit rounded-2xl bg-background-sub p-6 lg:sticky lg:top-24">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-text-primary">Bag summary</h2>
+      <dl class="mt-5 space-y-3 text-sm">
+        <div class="flex justify-between"><dt class="text-text-secondary">Items</dt><dd class="font-semibold text-text-primary">{{ cart.cartSig().totalItems }}</dd></div>
+        <div class="flex justify-between"><dt class="text-text-secondary">Subtotal</dt><dd class="font-semibold text-text-primary">${{ subtotal() | number:'1.2-2' }}</dd></div>
+        <div class="flex justify-between"><dt class="text-text-secondary">Shipping</dt><dd class="font-semibold text-text-primary">{{ shipping() === 0 ? 'Free' : '$' + (shipping() | number:'1.2-2') }}</dd></div>
+        <div class="flex justify-between"><dt class="text-text-secondary">Tax</dt><dd class="font-semibold text-text-primary">${{ tax() | number:'1.2-2' }}</dd></div>
+      </dl>
+      <div class="mt-5 border-t border-outline/60 pt-5">
+        <div class="flex items-baseline justify-between">
+          <span class="text-base font-bold text-text-primary">Total</span>
+          <span class="text-2xl font-bold text-primary">${{ total() | number:'1.2-2' }}</span>
+        </div>
+      </div>
+      <div class="mt-6 rounded-xl bg-background-accent p-4">
+        <p class="text-xs font-bold uppercase tracking-wider text-primary">Sustainable ethos</p>
+        <p class="mt-2 text-xs text-text-secondary">Every order offsets its carbon footprint via our partner makers.</p>
+      </div>
+    </aside>
+  </div>
+</section>

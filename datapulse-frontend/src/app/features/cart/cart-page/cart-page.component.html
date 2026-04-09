@@ -1,0 +1,92 @@
+<section class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+  <h1 class="text-display-md text-text-primary">Your bag</h1>
+  <p class="mt-1 text-sm text-text-secondary">Review your curated selections before checkout.</p>
+
+  <app-spinner *ngIf="loading()"></app-spinner>
+
+  <div *ngIf="!loading() && cart.cartSig().items.length === 0" class="mt-10">
+    <app-empty-state icon="shopping_bag" title="Your bag is empty" message="Discover pieces you'll love in our collection.">
+      <a routerLink="/products" class="btn-primary mt-6">Explore the Edit</a>
+    </app-empty-state>
+  </div>
+
+  <div *ngIf="!loading() && cart.cartSig().items.length > 0" class="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
+    <!-- Items list -->
+    <div class="space-y-4">
+      <article *ngFor="let item of cart.cartSig().items"
+               class="flex gap-5 rounded-2xl bg-background-raised p-5 shadow-atelier-sm">
+        <div class="h-32 w-32 flex-shrink-0 overflow-hidden rounded-xl bg-background-sub">
+          <img *ngIf="imageMap()[item.productId]" [src]="imageMap()[item.productId]" [alt]="item.productName" class="h-full w-full object-cover" />
+          <div *ngIf="!imageMap()[item.productId]" class="flex h-full w-full items-center justify-center text-text-tertiary">
+            <span class="material-symbols-outlined">image</span>
+          </div>
+        </div>
+        <div class="flex flex-1 flex-col">
+          <a [routerLink]="['/products', item.productId]" class="text-base font-semibold text-text-primary hover:text-primary">{{ item.productName }}</a>
+          <p class="mt-1 text-xs text-text-tertiary">Item #{{ item.productId }}</p>
+          <div class="mt-auto flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 rounded-full bg-background-sub p-1">
+              <button (click)="decrement(item)" class="flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Decrease quantity">
+                <span class="material-symbols-outlined" style="font-size: 16px">remove</span>
+              </button>
+              <span class="min-w-[2rem] text-center text-sm font-bold text-text-primary">{{ item.quantity }}</span>
+              <button (click)="increment(item)" class="flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Increase quantity">
+                <span class="material-symbols-outlined" style="font-size: 16px">add</span>
+              </button>
+            </div>
+            <div class="text-right">
+              <p class="text-lg font-bold text-text-primary">${{ item.lineTotal | number:'1.2-2' }}</p>
+              <p class="text-xs text-text-tertiary">${{ item.unitPrice | number:'1.2-2' }} each</p>
+            </div>
+          </div>
+        </div>
+        <button (click)="remove(item)" class="flex h-9 w-9 items-center justify-center self-start rounded-full text-text-tertiary transition-all hover:bg-danger/10 hover:text-danger" aria-label="Remove item">
+          <span class="material-symbols-outlined" style="font-size: 20px">delete</span>
+        </button>
+      </article>
+    </div>
+
+    <!-- Summary sidebar -->
+    <aside class="h-fit rounded-2xl bg-background-sub p-6">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-text-primary">Order summary</h2>
+      <dl class="mt-5 space-y-3 text-sm">
+        <div class="flex justify-between"><dt class="text-text-secondary">Subtotal</dt><dd class="font-semibold text-text-primary">${{ subtotal() | number:'1.2-2' }}</dd></div>
+        <div class="flex justify-between"><dt class="text-text-secondary">Shipping</dt><dd class="font-semibold text-text-primary">{{ shipping() === 0 ? 'Free' : '$' + (shipping() | number:'1.2-2') }}</dd></div>
+        <div class="flex justify-between"><dt class="text-text-secondary">Tax (8%)</dt><dd class="font-semibold text-text-primary">${{ tax() | number:'1.2-2' }}</dd></div>
+      </dl>
+      <div class="mt-5 border-t border-outline/60 pt-5">
+        <div class="flex items-baseline justify-between">
+          <span class="text-base font-bold text-text-primary">Total</span>
+          <span class="text-2xl font-bold text-primary">${{ total() | number:'1.2-2' }}</span>
+        </div>
+      </div>
+
+      <!-- Coupon -->
+      <div class="mt-6">
+        <label class="label-base">Coupon code</label>
+        <div class="flex gap-2">
+          <input type="text" placeholder="WELCOME10" [value]="couponCode()" (input)="couponCode.set($any($event.target).value)" class="input-base bg-background-raised" />
+          <button (click)="applyCoupon()" class="btn-secondary">Apply</button>
+        </div>
+      </div>
+
+      <a routerLink="/checkout" class="btn-primary mt-6 w-full h-14">
+        Proceed to checkout
+        <span class="material-symbols-outlined" style="font-size: 20px">arrow_forward</span>
+      </a>
+
+      <div class="mt-5 flex items-center gap-2 text-xs text-text-tertiary">
+        <span class="material-symbols-outlined" style="font-size: 16px">lock</span>
+        Secure checkout — your details are encrypted.
+      </div>
+    </aside>
+  </div>
+
+  <!-- You might also like -->
+  <section *ngIf="suggestions().length > 0" class="mt-20">
+    <h2 class="text-display-sm text-text-primary">You might also love</h2>
+    <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <app-product-card *ngFor="let p of suggestions()" [product]="p"></app-product-card>
+    </div>
+  </section>
+</section>

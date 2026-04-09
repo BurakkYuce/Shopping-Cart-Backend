@@ -1,0 +1,62 @@
+<div class="w-full max-w-md">
+  <div class="rounded-3xl bg-background-raised p-10 shadow-atelier">
+    <div class="mb-8 text-center">
+      <h1 class="text-display-sm text-text-primary">Welcome back</h1>
+      <p class="mt-2 text-sm text-text-secondary">Sign in to continue your curated journey.</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-5">
+      <div>
+        <label class="label-base" for="email">Email</label>
+        <input id="email" type="email" formControlName="email" autocomplete="email" placeholder="you@example.com" class="input-base" />
+        <p *ngIf="form.controls.email.touched && form.controls.email.invalid" class="mt-1.5 text-xs text-danger">
+          Please enter a valid email address.
+        </p>
+      </div>
+      <div>
+        <label class="label-base" for="password">Password</label>
+        <div class="relative">
+          <input id="password" [type]="showPassword() ? 'text' : 'password'" formControlName="password" autocomplete="current-password" placeholder="••••••••" class="input-base pr-12" />
+          <button type="button" (click)="togglePassword()" class="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-tertiary transition-colors hover:text-text-primary" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+            <span class="material-symbols-outlined" style="font-size: 20px">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+        <p *ngIf="form.controls.password.touched && form.controls.password.invalid" class="mt-1.5 text-xs text-danger">
+          Password must be at least 6 characters.
+        </p>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <label class="flex items-center gap-2 text-sm text-text-secondary">
+          <input type="checkbox" class="h-4 w-4 rounded border-outline text-primary focus:ring-primary" />
+          Remember me
+        </label>
+        <a routerLink="/auth/forgot-password" class="text-sm font-semibold text-primary hover:underline">Forgot password?</a>
+      </div>
+
+      <button type="submit" [disabled]="loading()" class="btn-primary w-full">
+        <span *ngIf="!loading()">Sign in</span>
+        <span *ngIf="loading()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+      </button>
+
+      <div class="relative py-2">
+        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-outline"></div></div>
+        <div class="relative flex justify-center"><span class="bg-background-raised px-3 text-xs text-text-tertiary">OR CONTINUE WITH</span></div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button type="button" class="flex items-center justify-center gap-2 rounded-xl bg-background-sub px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-outline">
+          <span class="material-symbols-outlined" style="font-size: 18px">g_translate</span>Google
+        </button>
+        <button type="button" class="flex items-center justify-center gap-2 rounded-xl bg-background-sub px-4 py-3 text-sm font-semibold text-text-primary transition-colors hover:bg-outline">
+          <span class="material-symbols-outlined" style="font-size: 18px">apple</span>Apple
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <p class="mt-6 text-center text-sm text-text-secondary">
+    New to DataPulse?
+    <a routerLink="/auth/register" class="font-semibold text-primary hover:underline">Create an account</a>
+  </p>
+</div>

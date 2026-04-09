@@ -1,0 +1,94 @@
+<section class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+  <h1 class="text-display-lg text-text-primary">Purchases</h1>
+  <p class="mt-1 text-sm text-text-secondary">Track the journey of every piece you've collected.</p>
+
+  <!-- Tabs -->
+  <div class="mt-8 flex gap-2 overflow-x-auto rounded-2xl bg-background-sub p-1.5 no-scrollbar">
+    <button *ngFor="let t of tabs" (click)="setTab(t.id)"
+            class="flex-shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all"
+            [class.bg-background-raised]="tab() === t.id"
+            [class.shadow-atelier-sm]="tab() === t.id"
+            [class.text-text-primary]="tab() === t.id"
+            [class.text-text-secondary]="tab() !== t.id">
+      {{ t.label }}
+    </button>
+  </div>
+
+  <app-spinner *ngIf="loading()"></app-spinner>
+  <app-empty-state *ngIf="!loading() && orders().length === 0"
+                   icon="receipt_long" title="No orders yet"
+                   message="Once you place an order, it'll appear here."></app-empty-state>
+
+  <div *ngIf="!loading() && orders().length > 0" class="mt-8 space-y-6">
+    <article *ngFor="let order of orders()" class="overflow-hidden rounded-3xl bg-background-raised shadow-atelier-sm">
+      <!-- Header -->
+      <header class="flex flex-wrap items-center justify-between gap-4 border-b border-outline/60 p-6">
+        <div class="flex gap-6">
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Order</p>
+            <p class="mt-1 font-mono text-sm font-bold text-text-primary">#{{ order.id }}</p>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Placed on</p>
+            <p class="mt-1 text-sm font-semibold text-text-primary">{{ order.createdAt | date:'mediumDate' }}</p>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Total</p>
+            <p class="mt-1 text-sm font-bold text-primary">${{ order.grandTotal | number:'1.2-2' }}</p>
+          </div>
+        </div>
+        <app-status-badge [status]="order.status"></app-status-badge>
+      </header>
+
+      <!-- Items strip -->
+      <div class="flex items-center gap-4 p-6">
+        <div class="flex -space-x-3">
+          <div *ngFor="let item of order.items.slice(0, 4)"
+               class="h-16 w-16 overflow-hidden rounded-2xl border-4 border-background-raised bg-background-sub shadow-atelier-sm">
+            <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.productName" class="h-full w-full object-cover" />
+            <div *ngIf="!item.imageUrl" class="flex h-full w-full items-center justify-center text-text-tertiary">
+              <span class="material-symbols-outlined" style="font-size: 20px">image</span>
+            </div>
+          </div>
+          <div *ngIf="order.items.length > 4"
+               class="flex h-16 w-16 items-center justify-center rounded-2xl border-4 border-background-raised bg-background-sub text-sm font-bold text-text-primary">
+            +{{ order.items.length - 4 }}
+          </div>
+        </div>
+        <div class="flex-1">
+          <p class="text-sm font-semibold text-text-primary">{{ order.items.length }} {{ order.items.length === 1 ? 'piece' : 'pieces' }}</p>
+          <p class="mt-1 line-clamp-1 text-xs text-text-secondary">{{ order.items[0].productName }}<span *ngIf="order.items.length > 1"> and more</span></p>
+        </div>
+        <div class="flex gap-2">
+          <a [routerLink]="['/orders', order.id]" class="btn-ghost text-sm">View details</a>
+          <a [routerLink]="['/orders', order.id, 'track']" class="btn-primary text-sm">Track order</a>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="relative border-t border-outline/60 bg-background-sub/50 px-6 py-6">
+        <div class="relative flex items-center justify-between">
+          <div class="absolute left-5 right-5 top-5 h-1 rounded-full bg-background-sub">
+            <div class="h-full rounded-full bg-primary transition-all" [style.width.%]="(stageIndex(order) / 4) * 100"></div>
+          </div>
+          <div *ngFor="let stage of timelineStages(); let i = index" class="relative flex flex-col items-center">
+            <div class="flex h-10 w-10 items-center justify-center rounded-full transition-all"
+                 [class.bg-primary]="i <= stageIndex(order)"
+                 [class.text-white]="i <= stageIndex(order)"
+                 [class.bg-background-raised]="i > stageIndex(order)"
+                 [class.text-text-tertiary]="i > stageIndex(order)">
+              <span class="material-symbols-outlined" style="font-size: 18px">{{ stage.icon }}</span>
+            </div>
+            <p class="mt-2 hidden text-[10px] font-semibold uppercase tracking-wider sm:block"
+               [class.text-text-primary]="i <= stageIndex(order)"
+               [class.text-text-tertiary]="i > stageIndex(order)">{{ stage.label }}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div *ngIf="!loading() && totalPages() > 1" class="mt-10">
+    <app-pagination [currentPage]="currentPage()" [totalPages]="totalPages()" [totalElements]="totalElements()" (pageChange)="onPageChange($event)"></app-pagination>
+  </div>
+</section>

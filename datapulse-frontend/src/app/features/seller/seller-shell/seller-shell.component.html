@@ -1,0 +1,35 @@
+<div class="flex min-h-screen bg-background">
+  <!-- Sidebar -->
+  <aside class="fixed left-0 top-0 flex h-screen w-64 flex-col bg-background-sub p-5">
+    <a routerLink="/seller" class="mb-8 flex items-center gap-2 px-2">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary shadow-atelier-sm">
+        <span class="material-symbols-outlined text-white" style="font-size: 22px">insights</span>
+      </div>
+      <div>
+        <p class="text-lg font-bold tracking-tight text-text-primary">DataPulse</p>
+        <p class="text-[10px] font-semibold uppercase tracking-wider text-primary">Seller</p>
+      </div>
+    </a>
+
+    <nav class="flex-1 space-y-1">
+      <a *ngFor="let n of nav"
+         [routerLink]="n.path"
+         [routerLinkActive]="'bg-background-raised text-text-primary shadow-atelier-sm font-semibold'"
+         [routerLinkActiveOptions]="{exact: n.exact === true}"
+         class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-text-secondary transition-all hover:bg-background-raised">
+        <span class="material-symbols-outlined" style="font-size: 20px">{{ n.icon }}</span>
+        {{ n.label }}
+      </a>
+    </nav>
+
+    <button (click)="logout()" class="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-danger transition-all hover:bg-background-raised">
+      <span class="material-symbols-outlined" style="font-size: 20px">logout</span>Sign out
+    </button>
+  </aside>
+
+  <!-- Main -->
+  <main class="ml-64 flex-1">
+    <router-outlet />
+  </main>
+  <app-toast />
+</div>

@@ -1,0 +1,159 @@
+<!-- Hero banner -->
+<section class="relative mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+  <div class="relative h-80 overflow-hidden rounded-3xl bg-background-accent">
+    <img src="https://images.unsplash.com/photo-1567225557594-88d73e55f2cb?q=80&w=1920&auto=format&fit=crop"
+         alt="" class="h-full w-full object-cover opacity-70" />
+    <div class="absolute inset-0 bg-gradient-to-r from-background/90 via-background/40 to-transparent"></div>
+    <div class="absolute inset-0 flex items-center px-12 lg:px-16">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-wider text-primary">The Collection</p>
+        <h1 class="mt-2 text-display-lg text-text-primary">
+          {{ activeCategory()?.name || 'All curated pieces' }}
+        </h1>
+        <p class="mt-3 max-w-md text-sm text-text-secondary">
+          {{ activeCategory()?.description || 'Hand-picked from makers we love. Updated weekly.' }}
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Subcategory chips -->
+<section *ngIf="categories().length > 0" class="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+  <div class="flex gap-2 overflow-x-auto rounded-2xl bg-background-sub p-2 no-scrollbar">
+    <button (click)="applyCategory(null)"
+            class="flex-shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+            [class.bg-background-raised]="categoryId() === null"
+            [class.text-text-primary]="categoryId() === null"
+            [class.shadow-atelier-sm]="categoryId() === null"
+            [class.text-text-secondary]="categoryId() !== null">All</button>
+    <button *ngFor="let cat of categories()" (click)="applyCategory(cat.id)"
+            class="flex-shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+            [class.bg-background-raised]="categoryId() === cat.id"
+            [class.text-text-primary]="categoryId() === cat.id"
+            [class.shadow-atelier-sm]="categoryId() === cat.id"
+            [class.text-text-secondary]="categoryId() !== cat.id">{{ cat.name }}</button>
+  </div>
+</section>
+
+<!-- Main grid -->
+<section class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  <div class="grid gap-8 lg:grid-cols-[288px_1fr]">
+    <!-- Sidebar filters -->
+    <aside class="space-y-6">
+      <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+        <h3 class="mb-4 text-xs font-bold uppercase tracking-wider text-text-primary">Collections</h3>
+        <div class="space-y-2">
+          <button (click)="applyCategory(null)"
+                  class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors"
+                  [class.bg-background-sub]="categoryId() === null"
+                  [class.font-semibold]="categoryId() === null">
+            <span>All pieces</span>
+          </button>
+          <button *ngFor="let cat of categories()" (click)="applyCategory(cat.id)"
+                  class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors"
+                  [class.bg-background-sub]="categoryId() === cat.id"
+                  [class.font-semibold]="categoryId() === cat.id">
+            <span>{{ cat.name }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+        <h3 class="mb-4 text-xs font-bold uppercase tracking-wider text-text-primary">Price range</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <input type="number" placeholder="Min" [ngModel]="priceMin()" (ngModelChange)="priceMin.set($event)" class="input-base" />
+          <input type="number" placeholder="Max" [ngModel]="priceMax()" (ngModelChange)="priceMax.set($event)" class="input-base" />
+        </div>
+      </div>
+
+      <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+        <h3 class="mb-4 text-xs font-bold uppercase tracking-wider text-text-primary">Brand</h3>
+        <input type="text" placeholder="e.g. Atelier Co." [ngModel]="brandFilter()" (ngModelChange)="brandFilter.set($event)" class="input-base" />
+      </div>
+
+      <div class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+        <h3 class="mb-4 text-xs font-bold uppercase tracking-wider text-text-primary">Minimum rating</h3>
+        <div class="space-y-2">
+          <label *ngFor="let r of [4,3,2,1]" class="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-background-sub">
+            <input type="radio" name="rating" [value]="r" [ngModel]="minRating()" (ngModelChange)="minRating.set($event)" class="h-4 w-4 text-primary" />
+            <span class="flex items-center gap-1">
+              <span *ngFor="let s of [1,2,3,4,5]" class="material-symbols-outlined text-primary"
+                    [class.filled]="s <= r" style="font-size: 14px">star</span>
+              <span class="ml-1 text-xs text-text-secondary">& up</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button (click)="applyFilters()" class="btn-primary flex-1">Apply</button>
+        <button (click)="clearFilters()" class="btn-secondary">Clear</button>
+      </div>
+    </aside>
+
+    <!-- Results -->
+    <div>
+      <!-- Toolbar -->
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-background-raised px-5 py-4 shadow-atelier-sm">
+        <p class="text-sm text-text-secondary">
+          <span class="font-bold text-text-primary">{{ totalElements() }}</span> pieces found
+        </p>
+        <div class="flex items-center gap-3">
+          <select [ngModel]="sort()" (ngModelChange)="applySort($event)"
+                  class="rounded-xl bg-background-sub px-4 py-2 text-sm font-semibold text-text-primary outline-none focus:bg-background-raised">
+            <option *ngFor="let opt of sortOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+          <div class="flex rounded-xl bg-background-sub p-1">
+            <button (click)="setView('grid')" class="flex h-8 w-8 items-center justify-center rounded-lg transition-all"
+                    [class.bg-background-raised]="view() === 'grid'"
+                    [class.shadow-atelier-sm]="view() === 'grid'">
+              <span class="material-symbols-outlined" style="font-size: 18px">grid_view</span>
+            </button>
+            <button (click)="setView('list')" class="flex h-8 w-8 items-center justify-center rounded-lg transition-all"
+                    [class.bg-background-raised]="view() === 'list'"
+                    [class.shadow-atelier-sm]="view() === 'list'">
+              <span class="material-symbols-outlined" style="font-size: 18px">view_list</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid/List -->
+      <app-spinner *ngIf="loading()"></app-spinner>
+      <app-empty-state *ngIf="!loading() && products().length === 0"
+                       icon="inventory_2" title="No pieces match" message="Try adjusting your filters or explore other collections."></app-empty-state>
+
+      <div *ngIf="!loading() && view() === 'grid'" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <app-product-card *ngFor="let p of products()" [product]="p"></app-product-card>
+      </div>
+
+      <div *ngIf="!loading() && view() === 'list'" class="space-y-4">
+        <a *ngFor="let p of products()" [routerLink]="['/products', p.id]"
+           class="flex gap-5 rounded-2xl bg-background-raised p-4 shadow-atelier-sm transition-all hover:shadow-atelier">
+          <div class="h-32 w-32 flex-shrink-0 overflow-hidden rounded-xl bg-background-sub">
+            <img *ngIf="p.imageUrl" [src]="p.imageUrl" [alt]="p.name" class="h-full w-full object-cover" />
+          </div>
+          <div class="flex flex-1 flex-col">
+            <span *ngIf="p.brand" class="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">{{ p.brand }}</span>
+            <h3 class="mt-1 text-base font-semibold text-text-primary">{{ p.name }}</h3>
+            <p class="mt-1 line-clamp-2 text-sm text-text-secondary">{{ p.description }}</p>
+            <div class="mt-auto flex items-baseline gap-2 pt-3">
+              <span class="text-lg font-bold text-text-primary">${{ p.unitPrice | number:'1.2-2' }}</span>
+              <span *ngIf="p.retailPrice && p.retailPrice > p.unitPrice" class="text-sm text-text-tertiary line-through">${{ p.retailPrice | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </a>
+      </div>
+
+      <div class="mt-10">
+        <app-pagination
+          [currentPage]="currentPage()"
+          [totalPages]="totalPages()"
+          [totalElements]="totalElements()"
+          (pageChange)="onPageChange($event)">
+        </app-pagination>
+      </div>
+    </div>
+  </div>
+</section>

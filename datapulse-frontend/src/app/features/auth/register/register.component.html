@@ -1,0 +1,62 @@
+<div class="w-full max-w-md">
+  <div class="rounded-3xl bg-background-raised p-10 shadow-atelier">
+    <div class="mb-6 text-center">
+      <h1 class="text-display-sm text-text-primary">Join DataPulse</h1>
+      <p class="mt-2 text-sm text-text-secondary">Create an account to start curating your finds.</p>
+    </div>
+
+    <!-- Mode toggle -->
+    <div class="mb-6 grid grid-cols-2 gap-1 rounded-xl bg-background-sub p-1">
+      <button type="button" (click)="setMode('individual')"
+              class="rounded-lg py-2 text-sm font-semibold transition-all"
+              [class.bg-background-raised]="mode() === 'individual'"
+              [class.text-text-primary]="mode() === 'individual'"
+              [class.shadow-atelier-sm]="mode() === 'individual'"
+              [class.text-text-secondary]="mode() !== 'individual'">Bireysel</button>
+      <button type="button" (click)="setMode('corporate')"
+              class="rounded-lg py-2 text-sm font-semibold transition-all"
+              [class.bg-background-raised]="mode() === 'corporate'"
+              [class.text-text-primary]="mode() === 'corporate'"
+              [class.shadow-atelier-sm]="mode() === 'corporate'"
+              [class.text-text-secondary]="mode() !== 'corporate'">Kurumsal</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
+      <div>
+        <label class="label-base">Email</label>
+        <input type="email" formControlName="email" placeholder="you@example.com" class="input-base" />
+      </div>
+      <div>
+        <label class="label-base">Gender (optional)</label>
+        <select formControlName="gender" class="input-base">
+          <option value="">Prefer not to say</option>
+          <option value="MALE">Male</option>
+          <option value="FEMALE">Female</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <div>
+        <label class="label-base">Password</label>
+        <div class="relative">
+          <input [type]="showPassword() ? 'text' : 'password'" formControlName="password" placeholder="••••••••" class="input-base pr-12" />
+          <button type="button" (click)="togglePassword()" class="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-text-tertiary hover:text-text-primary">
+            <span class="material-symbols-outlined" style="font-size: 20px">{{ showPassword() ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+      </div>
+      <label class="flex items-start gap-2 text-sm text-text-secondary">
+        <input type="checkbox" formControlName="terms" class="mt-0.5 h-4 w-4 rounded border-outline text-primary focus:ring-primary" />
+        <span>I agree to the <a href="#" class="font-semibold text-primary hover:underline">Terms of Service</a> and <a href="#" class="font-semibold text-primary hover:underline">Privacy Policy</a>.</span>
+      </label>
+      <button type="submit" [disabled]="loading()" class="btn-primary w-full">
+        <span *ngIf="!loading()">{{ mode() === 'corporate' ? 'Create Seller Account' : 'Create Account' }}</span>
+        <span *ngIf="loading()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+      </button>
+    </form>
+  </div>
+
+  <p class="mt-6 text-center text-sm text-text-secondary">
+    Already have an account?
+    <a routerLink="/auth/login" class="font-semibold text-primary hover:underline">Sign in</a>
+  </p>
+</div>

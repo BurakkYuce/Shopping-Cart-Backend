@@ -1,0 +1,65 @@
+<section class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-display-md text-text-primary">Addresses</h1>
+      <p class="mt-1 text-sm text-text-secondary">Where we send your curated pieces.</p>
+    </div>
+    <button (click)="openNew()" class="btn-primary">
+      <span class="material-symbols-outlined" style="font-size: 18px">add</span>Add address
+    </button>
+  </div>
+
+  <app-spinner *ngIf="loading()"></app-spinner>
+  <app-empty-state *ngIf="!loading() && addresses().length === 0 && !showForm()"
+                   icon="pin_drop" title="No addresses saved"
+                   message="Add a shipping address to speed through checkout."></app-empty-state>
+
+  <!-- Address cards -->
+  <div *ngIf="!loading() && addresses().length > 0" class="mt-8 grid gap-4 sm:grid-cols-2">
+    <article *ngFor="let addr of addresses()" class="rounded-2xl bg-background-raised p-6 shadow-atelier-sm">
+      <div class="flex items-center justify-between">
+        <span class="chip-primary">{{ addr.title }}</span>
+        <span *ngIf="addr.isDefault" class="text-[11px] font-bold uppercase tracking-wider text-success">DEFAULT</span>
+      </div>
+      <p class="mt-4 text-sm font-semibold text-text-primary">{{ addr.fullName }}</p>
+      <p class="mt-1 text-sm text-text-secondary">{{ addr.addressLine1 }}<br />
+        <span *ngIf="addr.addressLine2">{{ addr.addressLine2 }}<br /></span>
+        {{ addr.district }}, {{ addr.city }} {{ addr.zipCode }}<br />
+        {{ addr.country }}
+      </p>
+      <p class="mt-2 text-xs text-text-tertiary">{{ addr.phone }}</p>
+      <div class="mt-5 flex gap-2">
+        <button (click)="edit(addr)" class="btn-ghost text-xs">Edit</button>
+        <button *ngIf="!addr.isDefault" (click)="setDefault(addr)" class="btn-ghost text-xs">Set default</button>
+        <button (click)="remove(addr)" class="btn-ghost text-xs text-danger ml-auto">Delete</button>
+      </div>
+    </article>
+  </div>
+
+  <!-- Form -->
+  <form *ngIf="showForm()" [formGroup]="form" (ngSubmit)="save()" class="mt-8 rounded-3xl bg-background-raised p-8 shadow-atelier">
+    <h2 class="text-display-sm text-text-primary">{{ editingId() ? 'Edit address' : 'New address' }}</h2>
+    <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="sm:col-span-2"><label class="label-base">Title</label><input formControlName="title" placeholder="Home, Studio..." class="input-base" /></div>
+      <div><label class="label-base">Full name</label><input formControlName="fullName" class="input-base" /></div>
+      <div><label class="label-base">Phone</label><input formControlName="phone" class="input-base" /></div>
+      <div class="sm:col-span-2"><label class="label-base">Address line 1</label><input formControlName="addressLine1" class="input-base" /></div>
+      <div class="sm:col-span-2"><label class="label-base">Address line 2</label><input formControlName="addressLine2" class="input-base" /></div>
+      <div><label class="label-base">City</label><input formControlName="city" class="input-base" /></div>
+      <div><label class="label-base">District</label><input formControlName="district" class="input-base" /></div>
+      <div><label class="label-base">Zip code</label><input formControlName="zipCode" class="input-base" /></div>
+      <div><label class="label-base">Country</label><input formControlName="country" class="input-base" /></div>
+    </div>
+    <label class="mt-4 flex items-center gap-2 text-sm text-text-secondary">
+      <input type="checkbox" formControlName="isDefault" class="h-4 w-4 rounded border-outline text-primary focus:ring-primary" />
+      Use as default address
+    </label>
+    <div class="mt-6 flex gap-3">
+      <button type="button" (click)="cancel()" class="btn-secondary">Cancel</button>
+      <button type="submit" [disabled]="saving()" class="btn-primary">
+        <span *ngIf="!saving()">Save address</span>
+        <span *ngIf="saving()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+      </button>
+    </div>
+  </form>
+</section>

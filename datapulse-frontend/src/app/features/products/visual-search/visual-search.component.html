@@ -1,0 +1,89 @@
+<section class="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
+  <div class="text-center">
+    <p class="text-xs font-bold uppercase tracking-wider text-primary">Visual Discovery</p>
+    <h1 class="mt-2 text-display-lg text-text-primary">Find it by what it feels like.</h1>
+    <p class="mx-auto mt-4 max-w-lg text-sm text-text-secondary">
+      Drop an image, describe the mood, or both. Our hybrid search will surface pieces from our curators that resonate.
+    </p>
+  </div>
+
+  <!-- Drop zone -->
+  <div
+    class="mt-12 flex min-h-[320px] flex-col items-center justify-center rounded-3xl border-2 border-dashed border-outline bg-background-raised p-10 transition-all"
+    [class.border-primary]="dragOver()"
+    [class.bg-background-accent]="dragOver()"
+    (drop)="onDrop($event)"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave()">
+    <ng-container *ngIf="!previewUrl()">
+      <div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary-container">
+        <span class="material-symbols-outlined text-primary" style="font-size: 36px">image_search</span>
+      </div>
+      <p class="mt-5 text-lg font-semibold text-text-primary">Drop an image here</p>
+      <p class="mt-1 text-sm text-text-secondary">or click to upload — PNG, JPG up to 10MB</p>
+      <label class="btn-secondary mt-5 cursor-pointer">
+        <span class="material-symbols-outlined" style="font-size: 18px">upload</span>
+        Upload image
+        <input type="file" accept="image/*" (change)="onFileSelected($event)" class="hidden" />
+      </label>
+    </ng-container>
+    <ng-container *ngIf="previewUrl()">
+      <div class="relative">
+        <img [src]="previewUrl()!" alt="Uploaded preview" class="h-48 w-48 rounded-2xl object-cover shadow-atelier" />
+        <button (click)="clearImage()" class="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm hover:bg-background-sub" aria-label="Remove image">
+          <span class="material-symbols-outlined" style="font-size: 18px">close</span>
+        </button>
+      </div>
+      <p class="mt-4 text-sm text-text-secondary">Image loaded — refine with a prompt if you'd like.</p>
+    </ng-container>
+  </div>
+
+  <!-- Text hint -->
+  <div class="mt-6 flex items-center gap-3">
+    <div class="relative flex-1">
+      <span class="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" style="font-size: 20px">auto_awesome</span>
+      <input
+        type="text"
+        [ngModel]="hint()"
+        (ngModelChange)="hint.set($event)"
+        placeholder="Describe the feel — 'warm-toned ceramic vase'"
+        class="input-base pl-12" />
+    </div>
+    <span class="chip-primary hidden sm:inline-flex">
+      <span class="material-symbols-outlined" style="font-size: 14px">bolt</span>
+      AI Hybrid
+    </span>
+  </div>
+
+  <button (click)="findSimilar()" [disabled]="loading()" class="btn-primary mt-6 w-full h-14">
+    <span *ngIf="!loading()" class="material-symbols-outlined" style="font-size: 20px">travel_explore</span>
+    <span *ngIf="!loading()">Find similar pieces</span>
+    <span *ngIf="loading()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+  </button>
+</section>
+
+<!-- Results -->
+<section *ngIf="results().length > 0" class="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+  <h2 class="mb-6 text-display-sm text-text-primary">Visual matches</h2>
+  <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <article *ngFor="let r of results()" (click)="viewProduct(r.id)"
+             class="group relative cursor-pointer overflow-hidden rounded-2xl bg-background-raised shadow-atelier-sm transition-all hover:shadow-atelier">
+      <div class="aspect-[4/5] overflow-hidden bg-background-sub">
+        <img *ngIf="r.image_url" [src]="r.image_url" [alt]="r.name"
+             class="h-full w-full object-cover transition-transform group-hover:scale-105" />
+        <div *ngIf="!r.image_url" class="flex h-full w-full items-center justify-center text-text-tertiary">
+          <span class="material-symbols-outlined" style="font-size: 64px">image</span>
+        </div>
+      </div>
+      <span class="absolute left-4 top-4 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-atelier-sm"
+            style="background-color: #F5A623;">
+        {{ r.matchPct }}% match
+      </span>
+      <div class="p-5">
+        <p *ngIf="r.brand" class="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">{{ r.brand }}</p>
+        <h3 class="mt-1 text-base font-semibold text-text-primary line-clamp-2">{{ r.name }}</h3>
+        <p class="mt-2 text-lg font-bold text-primary">${{ r.price | number:'1.2-2' }}</p>
+      </div>
+    </article>
+  </div>
+</section>

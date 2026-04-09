@@ -1,0 +1,65 @@
+<article class="group relative flex flex-col">
+  <!-- Image area -->
+  <a [routerLink]="['/products', product.id]" class="relative block overflow-hidden rounded-2xl bg-background-sub shadow-atelier-sm transition-all hover:shadow-atelier">
+    <div class="aspect-[4/5] overflow-hidden rounded-2xl bg-background-sub">
+      <img
+        *ngIf="product.imageUrl"
+        [src]="product.imageUrl"
+        [alt]="product.name"
+        class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        loading="lazy" />
+      <div *ngIf="!product.imageUrl" class="flex h-full w-full items-center justify-center text-text-tertiary">
+        <span class="material-symbols-outlined" style="font-size: 64px">image</span>
+      </div>
+    </div>
+
+    <!-- Discount badge -->
+    <span *ngIf="discountPct !== null"
+          class="absolute left-4 top-4 rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-atelier-sm">
+      Save {{ discountPct }}%
+    </span>
+
+    <!-- Stock-out overlay -->
+    <div *ngIf="product.stockQuantity <= 0"
+         class="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/70 backdrop-blur-sm">
+      <span class="chip bg-background-raised text-text-primary">Sold out</span>
+    </div>
+
+    <!-- Wishlist toggle -->
+    <button
+      (click)="toggleWishlist($event)"
+      class="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-background-raised/90 text-text-primary shadow-atelier-sm transition-all hover:scale-110"
+      [attr.aria-label]="inWishlist() ? 'Remove from wishlist' : 'Add to wishlist'">
+      <span class="material-symbols-outlined" [class.filled]="inWishlist()" [class.text-primary]="inWishlist()"
+            style="font-size: 20px">favorite</span>
+    </button>
+
+    <!-- Quick add -->
+    <button
+      *ngIf="product.stockQuantity > 0"
+      (click)="addToCart($event)"
+      [disabled]="loadingAdd()"
+      class="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white opacity-0 shadow-atelier transition-all group-hover:opacity-100 disabled:opacity-50"
+      aria-label="Add to bag">
+      <span *ngIf="!loadingAdd()" class="material-symbols-outlined" style="font-size: 20px">add_shopping_cart</span>
+      <span *ngIf="loadingAdd()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+    </button>
+  </a>
+
+  <!-- Body -->
+  <div class="mt-4 flex flex-col gap-1 px-1">
+    <span *ngIf="product.brand" class="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary">{{ product.brand }}</span>
+    <a [routerLink]="['/products', product.id]" class="line-clamp-2 text-base font-semibold leading-snug text-text-primary transition-colors hover:text-primary">
+      {{ product.name }}
+    </a>
+    <div class="mt-1 flex items-center gap-2">
+      <app-star-rating *ngIf="product.rating !== undefined && product.rating !== null" [rating]="product.rating" [size]="14"></app-star-rating>
+      <span *ngIf="product.rating !== undefined && product.rating !== null" class="text-xs text-text-tertiary">{{ product.rating | number:'1.1-1' }}</span>
+    </div>
+    <div class="mt-2 flex items-baseline gap-2">
+      <span class="text-lg font-bold text-text-primary">${{ product.unitPrice | number:'1.2-2' }}</span>
+      <span *ngIf="product.retailPrice && product.retailPrice > product.unitPrice"
+            class="text-sm text-text-tertiary line-through">${{ product.retailPrice | number:'1.2-2' }}</span>
+    </div>
+  </div>
+</article>

@@ -1,0 +1,165 @@
+<section class="p-8">
+  <!-- Header -->
+  <header class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-xs font-bold uppercase tracking-wider text-primary">Atelier</p>
+      <h1 class="mt-2 text-display-md text-text-primary">Your creations</h1>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="relative">
+        <span class="material-symbols-outlined pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" style="font-size: 18px">search</span>
+        <input type="search"
+               [ngModel]="query()"
+               (ngModelChange)="query.set($event)"
+               (keyup.enter)="search()"
+               placeholder="Search pieces..."
+               class="h-11 w-64 rounded-xl bg-background-sub pl-11 pr-4 text-sm outline-none focus:bg-background-raised" />
+      </div>
+      <button class="flex h-11 w-11 items-center justify-center rounded-xl bg-background-sub" aria-label="Filter">
+        <span class="material-symbols-outlined" style="font-size: 20px">tune</span>
+      </button>
+      <button (click)="openNew()" class="btn-primary">
+        <span class="material-symbols-outlined" style="font-size: 18px">add</span>Add new creation
+      </button>
+    </div>
+  </header>
+
+  <app-spinner *ngIf="loading()"></app-spinner>
+
+  <!-- Product table -->
+  <div *ngIf="!loading()" class="mt-8 overflow-hidden rounded-3xl bg-background-raised shadow-atelier-sm">
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-outline/60">
+          <th class="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Product</th>
+          <th class="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Status</th>
+          <th class="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Stock</th>
+          <th class="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Price</th>
+          <th class="px-6 py-4 text-left text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Rating</th>
+          <th class="px-6 py-4 text-right text-[11px] font-bold uppercase tracking-wider text-text-tertiary">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of products()" class="border-b border-outline/30 last:border-0 hover:bg-background-sub/50">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-4">
+              <div class="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-background-sub">
+                <img *ngIf="p.imageUrl" [src]="p.imageUrl" [alt]="p.name" class="h-full w-full object-cover" />
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-text-primary">{{ p.name }}</p>
+                <p class="text-xs text-text-tertiary">SKU: {{ p.sku }}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4">
+            <app-status-badge [status]="stockStatus(p)"></app-status-badge>
+          </td>
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="h-1.5 w-20 overflow-hidden rounded-full bg-background-sub">
+                <div class="h-full bg-primary" [style.width.%]="Math.min(100, p.stockQuantity * 5)"></div>
+              </div>
+              <span class="text-xs text-text-secondary">{{ p.stockQuantity }}</span>
+            </div>
+          </td>
+          <td class="px-6 py-4 text-sm font-bold text-text-primary">${{ p.unitPrice | number:'1.2-2' }}</td>
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-1">
+              <span class="material-symbols-outlined filled text-primary" style="font-size: 16px">star</span>
+              <span class="text-sm font-semibold text-text-primary">{{ p.rating ? (p.rating | number:'1.1-1') : '—' }}</span>
+            </div>
+          </td>
+          <td class="px-6 py-4 text-right">
+            <button (click)="edit(p)" class="rounded-lg p-2 text-text-secondary transition-colors hover:bg-background-sub hover:text-primary" aria-label="Edit">
+              <span class="material-symbols-outlined" style="font-size: 18px">edit</span>
+            </button>
+            <button (click)="delete(p)" class="rounded-lg p-2 text-text-secondary transition-colors hover:bg-danger/10 hover:text-danger" aria-label="Delete">
+              <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="products().length === 0">
+          <td colspan="6" class="py-16 text-center text-sm text-text-tertiary">No products yet. Add your first creation.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="!loading() && totalPages() > 1" class="mt-6">
+    <app-pagination [currentPage]="currentPage()" [totalPages]="totalPages()" [totalElements]="totalElements()" (pageChange)="onPageChange($event)"></app-pagination>
+  </div>
+</section>
+
+<!-- Modal -->
+<div *ngIf="modalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-text-primary/40 p-4 animate-fade-in">
+  <div class="w-full max-w-2xl rounded-3xl bg-background-raised p-8 shadow-atelier-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h2 class="text-display-sm text-text-primary">{{ editingId() ? 'Edit creation' : 'Add new creation' }}</h2>
+      <button (click)="closeModal()" class="flex h-9 w-9 items-center justify-center rounded-full text-text-tertiary hover:bg-background-sub" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="mt-6 flex gap-1 rounded-xl bg-background-sub p-1">
+      <button *ngFor="let t of ['general','assets','pricing','shipping']"
+              (click)="setTab($any(t))"
+              class="flex-1 rounded-lg py-2 text-xs font-semibold uppercase tracking-wider transition-all"
+              [class.bg-background-raised]="modalTab() === t"
+              [class.shadow-atelier-sm]="modalTab() === t"
+              [class.text-text-primary]="modalTab() === t"
+              [class.text-text-secondary]="modalTab() !== t">
+        {{ t }}
+      </button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="mt-6">
+      <!-- General tab -->
+      <div *ngIf="modalTab() === 'general'" class="grid gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2"><label class="label-base">Name</label><input formControlName="name" class="input-base" /></div>
+        <div class="sm:col-span-2"><label class="label-base">SKU (optional)</label><input formControlName="sku" class="input-base" /></div>
+        <div class="sm:col-span-2">
+          <label class="label-base">Category</label>
+          <select formControlName="categoryId" class="input-base">
+            <option value="">Select a category</option>
+            <option *ngFor="let c of categories()" [value]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+        <div class="sm:col-span-2"><label class="label-base">Description</label><textarea formControlName="description" rows="4" class="input-base resize-none"></textarea></div>
+      </div>
+
+      <!-- Assets tab -->
+      <div *ngIf="modalTab() === 'assets'">
+        <label class="label-base">Image URL</label>
+        <input formControlName="imageUrl" placeholder="https://..." class="input-base" />
+        <div class="mt-4 grid grid-cols-4 gap-3">
+          <div class="aspect-square overflow-hidden rounded-xl bg-background-sub">
+            <img *ngIf="form.value.imageUrl" [src]="form.value.imageUrl" alt="Preview" class="h-full w-full object-cover" />
+          </div>
+          <div *ngFor="let i of [1,2,3]" class="flex aspect-square items-center justify-center rounded-xl bg-background-sub text-text-tertiary">
+            <span class="material-symbols-outlined">add_photo_alternate</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pricing tab -->
+      <div *ngIf="modalTab() === 'pricing'" class="grid gap-4 sm:grid-cols-2">
+        <div><label class="label-base">Unit price ($)</label><input type="number" formControlName="unitPrice" class="input-base" /></div>
+        <div><label class="label-base">Stock quantity</label><input type="number" formControlName="stockQuantity" class="input-base" /></div>
+      </div>
+
+      <!-- Shipping tab -->
+      <div *ngIf="modalTab() === 'shipping'" class="space-y-4">
+        <p class="text-sm text-text-secondary">Shipping settings are managed at the store level. Visit Settings to configure default carriers and rates.</p>
+      </div>
+
+      <div class="mt-8 flex justify-end gap-3">
+        <button type="button" (click)="closeModal()" class="btn-secondary">Cancel</button>
+        <button type="submit" [disabled]="saving()" class="btn-primary">
+          <span *ngIf="!saving()">{{ editingId() ? 'Save changes' : 'Create piece' }}</span>
+          <span *ngIf="saving()" class="material-symbols-outlined animate-spin" style="font-size: 20px">progress_activity</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

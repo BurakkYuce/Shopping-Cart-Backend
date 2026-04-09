@@ -1,0 +1,102 @@
+<!-- Floating trigger -->
+<button
+  *ngIf="!chat.panelOpen()"
+  (click)="chat.openPanel()"
+  class="fixed bottom-6 right-6 z-[100] flex h-16 w-16 items-center justify-center rounded-full shadow-atelier-lg transition-all hover:scale-105"
+  style="background: linear-gradient(135deg, #E8560C 0%, #D14A08 100%);"
+  aria-label="Open DataPulse Assistant">
+  <span class="material-symbols-outlined text-white" style="font-size: 28px">auto_awesome</span>
+  <span class="absolute inline-flex h-full w-full animate-ping-slow rounded-full bg-primary opacity-30"></span>
+</button>
+
+<!-- Slide-in panel -->
+<aside
+  *ngIf="chat.panelOpen()"
+  class="fixed bottom-0 right-0 top-0 z-[100] flex w-full max-w-md flex-col bg-background-raised shadow-atelier-lg animate-slide-in-right sm:bottom-6 sm:right-6 sm:top-6 sm:max-w-[400px] sm:rounded-3xl">
+  <!-- Header -->
+  <header class="flex items-center justify-between rounded-t-3xl p-5"
+          style="background: linear-gradient(135deg, #FFDBC8 0%, #E8560C 100%);">
+    <div class="flex items-center gap-3">
+      <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-background-raised/25 backdrop-blur-sm">
+        <span class="material-symbols-outlined text-white" style="font-size: 24px">auto_awesome</span>
+      </div>
+      <div>
+        <p class="text-sm font-bold text-white">DataPulse Assistant</p>
+        <p class="text-[11px] text-white/80">Insights, trends & recommendations</p>
+      </div>
+    </div>
+    <button (click)="chat.closePanel()" class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white transition-all hover:bg-white/30" aria-label="Close panel">
+      <span class="material-symbols-outlined" style="font-size: 20px">close</span>
+    </button>
+  </header>
+
+  <!-- Thread -->
+  <div #threadRef class="flex-1 space-y-4 overflow-y-auto p-5 no-scrollbar">
+    <!-- Intro / empty state -->
+    <div *ngIf="chat.messages().length === 0" class="space-y-5 pt-4">
+      <div class="flex gap-3">
+        <div class="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-container">
+          <span class="material-symbols-outlined text-primary" style="font-size: 18px">auto_awesome</span>
+        </div>
+        <div class="max-w-[80%] rounded-2xl rounded-tl-md bg-background-sub p-4">
+          <p class="text-sm leading-relaxed text-text-primary">Hello! I'm your DataPulse assistant. Ask me anything about your products, orders, or market trends.</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 pl-11">
+        <button *ngFor="let s of suggestions" (click)="useSuggestion(s)"
+                class="rounded-full bg-background-sub px-3 py-1.5 text-xs font-medium text-text-primary transition-all hover:bg-primary-container hover:text-primary">
+          {{ s }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <ng-container *ngFor="let msg of chat.messages(); let i = index; trackBy: trackMsg">
+      <!-- Assistant -->
+      <div *ngIf="msg.role === 'assistant'" class="flex gap-3">
+        <div class="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary-container">
+          <span class="material-symbols-outlined text-primary" style="font-size: 18px">auto_awesome</span>
+        </div>
+        <div class="max-w-[80%] rounded-2xl rounded-tl-md bg-background-sub p-4">
+          <!-- Typing indicator -->
+          <div *ngIf="msg.loading" class="flex items-center gap-1">
+            <span class="h-2 w-2 animate-bounce rounded-full bg-text-tertiary" style="animation-delay: 0ms"></span>
+            <span class="h-2 w-2 animate-bounce rounded-full bg-text-tertiary" style="animation-delay: 150ms"></span>
+            <span class="h-2 w-2 animate-bounce rounded-full bg-text-tertiary" style="animation-delay: 300ms"></span>
+          </div>
+          <p *ngIf="!msg.loading" class="whitespace-pre-wrap text-sm leading-relaxed text-text-primary">{{ msg.content }}</p>
+          <div *ngIf="msg.plotlyJson" [id]="'chat-plot-' + i" class="mt-3 h-48 w-full rounded-xl bg-background-raised p-1"></div>
+        </div>
+      </div>
+
+      <!-- User -->
+      <div *ngIf="msg.role === 'user'" class="flex flex-row-reverse gap-3">
+        <div class="max-w-[80%] rounded-2xl rounded-tr-md bg-primary p-4 text-white">
+          <p class="whitespace-pre-wrap text-sm leading-relaxed">{{ msg.content }}</p>
+        </div>
+      </div>
+    </ng-container>
+
+    <p *ngIf="errorMsg()" class="rounded-xl bg-danger/10 p-3 text-xs text-danger">{{ errorMsg() }}</p>
+  </div>
+
+  <!-- Composer -->
+  <footer class="border-t border-outline/60 p-4">
+    <div class="flex items-end gap-2">
+      <textarea
+        rows="1"
+        [ngModel]="input()"
+        (ngModelChange)="input.set($event)"
+        (keydown)="onKeydown($event)"
+        placeholder="Ask anything..."
+        class="flex-1 resize-none rounded-2xl bg-background-sub px-4 py-3 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:bg-background-raised focus:shadow-focus"></textarea>
+      <button
+        (click)="send()"
+        [disabled]="!input().trim() || sending()"
+        class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-primary text-white shadow-atelier-sm transition-all hover:bg-primary-hover disabled:opacity-50"
+        aria-label="Send message">
+        <span class="material-symbols-outlined" style="font-size: 22px">arrow_upward</span>
+      </button>
+    </div>
+  </footer>
+</aside>
