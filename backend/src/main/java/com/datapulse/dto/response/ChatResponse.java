@@ -11,7 +11,10 @@ public class ChatResponse {
     private String message;
     private String sessionId;
     private String status;
-    private String plotlyJson;  // Plotly figure JSON, null if no chart
+    private String plotlyJson;
+    private String conversationId;
+    private String intent;
+    private String generatedSql;
 
     public ChatResponse(String message, String sessionId, String status) {
         this.message = message;

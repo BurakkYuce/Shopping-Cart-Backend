@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { ChatService } from '../../../core/services/chat.service';
-import { ChatMessage } from '../../../core/models/chat.models';
+import { ChatMessage, Conversation } from '../../../core/models/chat.models';
 
 @Component({
   selector: 'app-chat-bubble',
@@ -18,6 +18,7 @@ export class ChatBubbleComponent implements AfterViewInit, OnDestroy {
   readonly input = signal<string>('');
   readonly sending = signal<boolean>(false);
   readonly errorMsg = signal<string | null>(null);
+  readonly showHistory = signal<boolean>(false);
 
   readonly suggestions = [
     'Which categories are trending this week?',
@@ -30,7 +31,6 @@ export class ChatBubbleComponent implements AfterViewInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      // Auto-scroll + render plotly when messages change
       const msgs = this.chat.messages();
       if (msgs.length > 0 && this.threadRef) {
         queueMicrotask(() => {
@@ -77,6 +77,34 @@ export class ChatBubbleComponent implements AfterViewInit, OnDestroy {
 
   trackMsg(index: number, msg: ChatMessage): string {
     return `${index}-${msg.timestamp.getTime()}`;
+  }
+
+  toggleHistory(): void {
+    this.showHistory.update((v) => !v);
+    if (this.showHistory()) {
+      this.chat.loadConversations();
+    }
+  }
+
+  loadConversation(conv: Conversation): void {
+    this.chat.loadConversation(conv.id).subscribe({
+      next: () => this.showHistory.set(false),
+      error: () => this.errorMsg.set('Failed to load conversation.'),
+    });
+  }
+
+  startNewConversation(): void {
+    this.chat.newConversation();
+    this.showHistory.set(false);
+  }
+
+  deleteConversation(conv: Conversation, event: Event): void {
+    event.stopPropagation();
+    this.chat.deleteConversation(conv.id).subscribe();
+  }
+
+  trackConv(index: number, conv: Conversation): string {
+    return conv.id;
   }
 
   private async renderPlots(msgs: ChatMessage[]): Promise<void> {

@@ -40,6 +40,8 @@ app.add_middleware(
 class ChatRequest(BaseModel):
     message: str
     sessionId: Optional[str] = None
+    conversationId: Optional[str] = None
+    messageHistory: Optional[list[dict]] = None
 
 
 class ChatResponse(BaseModel):
@@ -117,7 +119,7 @@ def chat_ask(
         "analysis_text": "",
         "visualization_spec": None,
         "final_response": "",
-        "message_history": [],
+        "message_history": request.messageHistory or [],
         "fatal_error": None,
     }
 

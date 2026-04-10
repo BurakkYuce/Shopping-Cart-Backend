@@ -25,13 +25,65 @@
         <p class="text-[11px] text-white/80">Insights, trends & recommendations</p>
       </div>
     </div>
-    <button (click)="chat.closePanel()" class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white transition-all hover:bg-white/30" aria-label="Close panel">
-      <span class="material-symbols-outlined" style="font-size: 20px">close</span>
-    </button>
+    <div class="flex items-center gap-1">
+      <button (click)="startNewConversation()"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white transition-all hover:bg-white/30"
+              aria-label="New conversation" title="New conversation">
+        <span class="material-symbols-outlined" style="font-size: 20px">add</span>
+      </button>
+      <button (click)="toggleHistory()"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white transition-all hover:bg-white/30"
+              [class.bg-white/40]="showHistory()"
+              aria-label="Conversation history" title="Past conversations">
+        <span class="material-symbols-outlined" style="font-size: 20px">history</span>
+      </button>
+      <button (click)="chat.closePanel()"
+              class="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-white transition-all hover:bg-white/30"
+              aria-label="Close panel">
+        <span class="material-symbols-outlined" style="font-size: 20px">close</span>
+      </button>
+    </div>
   </header>
 
+  <!-- Conversation History Panel -->
+  <div *ngIf="showHistory()" class="flex-1 overflow-y-auto p-4 no-scrollbar">
+    <div class="mb-3 flex items-center justify-between">
+      <p class="text-sm font-semibold text-text-primary">Past Conversations</p>
+      <button (click)="startNewConversation()"
+              class="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover">
+        + New Chat
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="chat.conversationsLoading()" class="flex justify-center py-8">
+      <span class="material-symbols-outlined animate-spin text-text-tertiary">progress_activity</span>
+    </div>
+
+    <!-- Empty -->
+    <div *ngIf="!chat.conversationsLoading() && chat.conversations().length === 0"
+         class="py-8 text-center text-sm text-text-tertiary">
+      No past conversations yet.
+    </div>
+
+    <!-- List -->
+    <div *ngFor="let conv of chat.conversations(); trackBy: trackConv"
+         (click)="loadConversation(conv)"
+         class="group mb-2 flex cursor-pointer items-center justify-between rounded-xl bg-background-sub p-3 transition-all hover:bg-primary-container">
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-medium text-text-primary">{{ conv.title }}</p>
+        <p class="text-[11px] text-text-tertiary">{{ conv.updatedAt | date:'short' }}</p>
+      </div>
+      <button (click)="deleteConversation(conv, $event)"
+              class="ml-2 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-text-tertiary opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
+              aria-label="Delete conversation">
+        <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
+      </button>
+    </div>
+  </div>
+
   <!-- Thread -->
-  <div #threadRef class="flex-1 space-y-4 overflow-y-auto p-5 no-scrollbar">
+  <div *ngIf="!showHistory()" #threadRef class="flex-1 space-y-4 overflow-y-auto p-5 no-scrollbar">
     <!-- Intro / empty state -->
     <div *ngIf="chat.messages().length === 0" class="space-y-5 pt-4">
       <div class="flex gap-3">
@@ -81,7 +133,7 @@
   </div>
 
   <!-- Composer -->
-  <footer class="border-t border-outline/60 p-4">
+  <footer *ngIf="!showHistory()" class="border-t border-outline/60 p-4">
     <div class="flex items-end gap-2">
       <textarea
         rows="1"
