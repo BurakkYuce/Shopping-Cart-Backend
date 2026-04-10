@@ -103,7 +103,7 @@ class OrderServiceTest {
     void createOrder_success() {
         Authentication auth = buildIndividualAuth("user1");
 
-        Product product = new Product("prod1", "store1", null, "cat1", null, "SKU-01", "Widget", 10.0, "A widget", null, 100, null, null, null);
+        Product product = new Product("prod1", "store1", null, "cat1", null, "SKU-01", "Widget", 10.0, "A widget", null, 100, null, null, null, null);
 
         CreateOrderRequest req = new CreateOrderRequest();
         req.setStoreId("store1");

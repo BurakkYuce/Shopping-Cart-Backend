@@ -6,7 +6,8 @@ Shares the same LangGraph graph as the Chainlit UI.
 import uuid
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from auth.jwt_validator import decode_token
@@ -15,8 +16,25 @@ from db.schema_context import get_schema_context
 from graph.graph_builder import get_graph
 from graph.state import AgentState
 from rbac.sql_filter import get_sql_filter
+from visual_search.searcher import search_by_image_bytes, search_by_image_and_text, search_by_text, _get_model
 
 app = FastAPI(title="E-Commerce Chatbot API", version="1.0.0")
+
+
+@app.on_event("startup")
+def warmup_clip():
+    """Pre-load the CLIP model so the first visual-search request isn't slow."""
+    try:
+        _get_model()
+    except Exception:
+        pass  # non-fatal — model will load on first request
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:4200"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ChatRequest(BaseModel):
@@ -37,6 +55,26 @@ class ChatResponse(BaseModel):
 def health():
     db_ok = check_connection()
     return {"status": "ok" if db_ok else "degraded", "db": "up" if db_ok else "down"}
+
+
+@app.post("/visual-search")
+async def visual_search(
+    image: UploadFile = File(default=None),
+    hint: str = Form(default=""),
+    top_k: int = Form(default=9),
+):
+    """CLIP-based visual product search. Accepts image upload + optional text hint."""
+    if image is not None:
+        image_bytes = await image.read()
+        if hint.strip():
+            results = search_by_image_and_text(image_bytes, hint.strip(), top_k=top_k)
+        else:
+            results = search_by_image_bytes(image_bytes, top_k=top_k)
+    elif hint.strip():
+        results = search_by_text(hint.strip(), top_k=top_k)
+    else:
+        raise HTTPException(status_code=400, detail="Provide an image or a text hint.")
+    return {"results": results}
 
 
 @app.post("/chat/ask", response_model=ChatResponse)

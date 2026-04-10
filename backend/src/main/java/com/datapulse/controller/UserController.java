@@ -37,4 +37,12 @@ public class UserController {
     public ResponseEntity<?> getAllUsers(Authentication auth) {
         return ResponseEntity.ok(userService.getAllUsers(auth));
     }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<?> changePassword(
+            Authentication auth,
+            @RequestBody Map<String, String> body) {
+        userService.changePassword(auth, body.get("currentPassword"), body.get("newPassword"));
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully"));
+    }
 }

@@ -27,12 +27,26 @@ public class ProductController {
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) Double minPrice,
-            @RequestParam(required = false) Double maxPrice) {
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("name").ascending());
+            @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false, defaultValue = "name,asc") String sort) {
+        Sort sortObj = parseSort(sort);
+        PageRequest pageable = PageRequest.of(page, size, sortObj);
         if (q != null || categoryId != null || minPrice != null || maxPrice != null) {
             return ResponseEntity.ok(productService.searchProducts(q, categoryId, minPrice, maxPrice, pageable));
         }
         return ResponseEntity.ok(productService.getProducts(auth, pageable));
+    }
+
+    private Sort parseSort(String sort) {
+        try {
+            String[] parts = sort.split(",");
+            String field = parts[0].trim();
+            Sort.Direction direction = parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")
+                    ? Sort.Direction.DESC : Sort.Direction.ASC;
+            return Sort.by(direction, field);
+        } catch (Exception e) {
+            return Sort.by("name").ascending();
+        }
     }
 
     @GetMapping("/{id}")

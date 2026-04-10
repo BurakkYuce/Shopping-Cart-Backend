@@ -9,6 +9,7 @@ import com.datapulse.repository.UserRepository;
 import com.datapulse.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.Map;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     private UserDetailsImpl extractCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -76,5 +78,16 @@ public class UserService {
 
         userRepository.save(user);
         return UserResponse.from(user);
+    }
+
+    public void changePassword(Authentication auth, String currentPassword, String newPassword) {
+        UserDetailsImpl current = extractCurrentUser(auth);
+        User user = userRepository.findById(current.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User", current.getId()));
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new UnauthorizedAccessException("Current password is incorrect");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }

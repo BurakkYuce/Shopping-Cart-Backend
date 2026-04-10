@@ -6,6 +6,7 @@ import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.model.Review;
 import com.datapulse.model.RoleType;
+import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.ProductRepository;
 import com.datapulse.repository.ReviewRepository;
 import com.datapulse.security.UserDetailsImpl;
@@ -23,6 +24,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
+    private final OrderItemRepository orderItemRepository;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -35,16 +37,27 @@ public class ReviewService {
 
     public ReviewResponse createReview(CreateReviewRequest req, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
+        String userId = currentUser.getId();
 
         // Verify product exists
         productRepository.findById(req.getProductId())
                 .orElseThrow(() -> new EntityNotFoundException("Product", req.getProductId()));
 
+        // Must have a delivered order containing this product
+        if (!orderItemRepository.existsDeliveredOrderWithProduct(userId, req.getProductId())) {
+            throw new IllegalArgumentException("You can only review products you have purchased and received.");
+        }
+
+        // Prevent duplicate reviews
+        if (reviewRepository.existsByUserIdAndProductId(userId, req.getProductId())) {
+            throw new IllegalArgumentException("You have already reviewed this product.");
+        }
+
         String id = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 
         Review review = new Review();
         review.setId(id);
-        review.setUserId(currentUser.getId());
+        review.setUserId(userId);
         review.setProductId(req.getProductId());
         review.setStarRating(req.getStarRating());
         review.setReviewHeadline(req.getReviewHeadline());
@@ -52,7 +65,7 @@ public class ReviewService {
         review.setHelpfulVotes(0);
         review.setTotalVotes(0);
         review.setSentiment("neutral");
-        review.setVerifiedPurchase("N");
+        review.setVerifiedPurchase("Y");
         review.setReviewDate(LocalDate.now());
 
         reviewRepository.save(review);
