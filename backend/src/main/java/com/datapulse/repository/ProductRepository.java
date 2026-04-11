@@ -15,14 +15,23 @@ public interface ProductRepository extends JpaRepository<Product, String> {
     Page<Product> findAll(Pageable pageable);
     Page<Product> findByStoreIdIn(List<String> storeIds, Pageable pageable);
 
-    @Query("SELECT p FROM Product p WHERE " +
-           "(:query IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%'))) AND " +
-           "(:categoryId IS NULL OR p.categoryId = :categoryId) AND " +
-           "(:minPrice IS NULL OR p.unitPrice >= :minPrice) AND " +
-           "(:maxPrice IS NULL OR p.unitPrice <= :maxPrice)")
+    @Query(value = "SELECT * FROM products p WHERE " +
+           "(CAST(:query AS text) IS NULL OR p.name ILIKE ('%' || CAST(:query AS text) || '%') OR p.description ILIKE ('%' || CAST(:query AS text) || '%')) AND " +
+           "(CAST(:categoryId AS text) IS NULL OR p.category_id = CAST(:categoryId AS text)) AND " +
+           "(CAST(:brand AS text) IS NULL OR p.brand ILIKE CAST(:brand AS text)) AND " +
+           "(CAST(:minPrice AS double precision) IS NULL OR p.unit_price >= CAST(:minPrice AS double precision)) AND " +
+           "(CAST(:maxPrice AS double precision) IS NULL OR p.unit_price <= CAST(:maxPrice AS double precision))",
+           countQuery = "SELECT count(*) FROM products p WHERE " +
+           "(CAST(:query AS text) IS NULL OR p.name ILIKE ('%' || CAST(:query AS text) || '%') OR p.description ILIKE ('%' || CAST(:query AS text) || '%')) AND " +
+           "(CAST(:categoryId AS text) IS NULL OR p.category_id = CAST(:categoryId AS text)) AND " +
+           "(CAST(:brand AS text) IS NULL OR p.brand ILIKE CAST(:brand AS text)) AND " +
+           "(CAST(:minPrice AS double precision) IS NULL OR p.unit_price >= CAST(:minPrice AS double precision)) AND " +
+           "(CAST(:maxPrice AS double precision) IS NULL OR p.unit_price <= CAST(:maxPrice AS double precision))",
+           nativeQuery = true)
     Page<Product> search(
             @Param("query") String query,
             @Param("categoryId") String categoryId,
+            @Param("brand") String brand,
             @Param("minPrice") Double minPrice,
             @Param("maxPrice") Double maxPrice,
             Pageable pageable);

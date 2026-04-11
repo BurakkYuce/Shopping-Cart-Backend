@@ -52,8 +52,8 @@ public class ProductService {
         return productRepository.findAll(pageable).map(ProductResponse::from);
     }
 
-    public Page<ProductResponse> searchProducts(String query, String categoryId, Double minPrice, Double maxPrice, Pageable pageable) {
-        return productRepository.search(query, categoryId, minPrice, maxPrice, pageable).map(ProductResponse::from);
+    public Page<ProductResponse> searchProducts(String query, String categoryId, String brand, Double minPrice, Double maxPrice, Pageable pageable) {
+        return productRepository.search(query, categoryId, brand, minPrice, maxPrice, pageable).map(ProductResponse::from);
     }
 
     public ProductResponse getProductById(String id) {

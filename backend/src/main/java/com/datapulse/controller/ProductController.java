@@ -26,13 +26,14 @@ public class ProductController {
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) String brand,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false, defaultValue = "name,asc") String sort) {
         Sort sortObj = parseSort(sort);
         PageRequest pageable = PageRequest.of(page, size, sortObj);
-        if (q != null || categoryId != null || minPrice != null || maxPrice != null) {
-            return ResponseEntity.ok(productService.searchProducts(q, categoryId, minPrice, maxPrice, pageable));
+        if (q != null || categoryId != null || brand != null || minPrice != null || maxPrice != null) {
+            return ResponseEntity.ok(productService.searchProducts(q, categoryId, brand, minPrice, maxPrice, pageable));
         }
         return ResponseEntity.ok(productService.getProducts(auth, pageable));
     }
