@@ -37,26 +37,16 @@ public class CartService {
         return buildCartResponse(items);
     }
 
+    @Transactional
     public CartResponse addToCart(AddToCartRequest request, Authentication auth) {
         String userId = getCurrentUser(auth).getId();
 
         productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new EntityNotFoundException("Product", request.getProductId()));
 
-        CartItem item = cartItemRepository.findByUserIdAndProductId(userId, request.getProductId())
-                .orElse(null);
+        String newId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        cartItemRepository.upsertCartItem(newId, userId, request.getProductId(), request.getQuantity());
 
-        if (item != null) {
-            item.setQuantity(item.getQuantity() + request.getQuantity());
-        } else {
-            item = new CartItem();
-            item.setId(UUID.randomUUID().toString().replace("-", "").substring(0, 8));
-            item.setUserId(userId);
-            item.setProductId(request.getProductId());
-            item.setQuantity(request.getQuantity());
-        }
-
-        cartItemRepository.save(item);
         return getCart(auth);
     }
 
