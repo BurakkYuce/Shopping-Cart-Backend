@@ -95,8 +95,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: ({ cats, trending, flash, stores }) => {
         this.categories.set(cats.slice(0, 8));
-        this.trending.set(trending.content.filter((p) => !!p.imageUrl).slice(0, 8));
-        this.flashMarket.set(flash.content.filter((p) => !!p.imageUrl).slice(0, 4));
+        this.trending.set(trending.content.slice(0, 8));
+        this.flashMarket.set(flash.content.slice(0, 4));
         this.stores.set(stores.slice(0, 6));
         this.loading.set(false);
       },

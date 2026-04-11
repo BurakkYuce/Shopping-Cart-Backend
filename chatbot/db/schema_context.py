@@ -51,7 +51,12 @@ COMMON JOIN PATTERNS:
   - Category ratings: products p → categories c ON c.id = p.category_id → reviews r ON r.product_id = p.id
   - Customer spend: users u → customer_profiles cp ON cp.user_id = u.id
   - Shipping analysis: orders o → shipments s ON s.order_id = o.id (use DISTINCT or aggregate due to multiple shipments)
-  - Top products by quantity: order_items GROUP BY product_id ORDER BY SUM(quantity) DESC
+  - Top products by quantity: order_items oi JOIN products p ON p.id = oi.product_id GROUP BY p.name ORDER BY SUM(oi.quantity) DESC
+
+IMPORTANT — HUMAN-READABLE NAMES:
+  - NEVER use raw IDs (product_id, category_id, store_id) as display columns in query results.
+  - Always JOIN the referenced table to include the human-readable name (p.name, c.name, s.name).
+  - Example: instead of `SELECT oi.product_id, SUM(oi.quantity)` use `SELECT p.name, SUM(oi.quantity) ... JOIN products p ON p.id = oi.product_id`.
 
 GENERAL SQL RULES:
   - Always use explicit table aliases (e.g. orders o, order_items oi)

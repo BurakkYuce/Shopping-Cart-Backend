@@ -8,7 +8,6 @@ export interface Product {
   description?: string;
   imageUrl?: string;
   stockQuantity: number;
-  // Frontend-only UI extras (not returned by backend)
   brand?: string;
   rating?: number;
   retailPrice?: number;

@@ -67,7 +67,7 @@
         <button (click)="toggleUserMenu()" class="flex h-11 w-11 items-center justify-center rounded-full bg-background-sub transition-all hover:bg-outline" aria-label="Account menu">
           <span class="material-symbols-outlined text-text-primary">person</span>
         </button>
-        <div *ngIf="userMenuOpen()" class="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl bg-background-raised shadow-atelier">
+        <div *ngIf="userMenuOpen()" class="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl bg-background-raised shadow-atelier">
           <ng-container *ngIf="auth.isCustomer()">
             <a routerLink="/profile" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">account_circle</span>Profile</a>
             <a routerLink="/orders" (click)="closeUserMenu()" class="flex items-center gap-3 px-5 py-3 text-sm text-text-primary transition-colors hover:bg-background-sub"><span class="material-symbols-outlined text-text-secondary" style="font-size: 20px">receipt_long</span>Orders</a>

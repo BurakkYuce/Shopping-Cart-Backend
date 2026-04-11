@@ -32,4 +32,19 @@ public class Store {
     private String name;
 
     private String status;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(length = 500)
+    private String address;
+
+    @Column(length = 100)
+    private String city;
+
+    @Column(length = 30)
+    private String phone;
+
+    @Column(name = "logo_url", length = 1024)
+    private String logoUrl;
 }

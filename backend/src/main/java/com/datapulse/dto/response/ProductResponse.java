@@ -14,6 +14,9 @@ public class ProductResponse {
     private String description;
     private String imageUrl;
     private Integer stockQuantity;
+    private String brand;
+    private Double rating;
+    private Double retailPrice;
 
     public static ProductResponse from(Product product) {
         ProductResponse r = new ProductResponse();
@@ -26,6 +29,9 @@ public class ProductResponse {
         r.description = product.getDescription();
         r.imageUrl = product.getImageUrl();
         r.stockQuantity = product.getStockQuantity();
+        r.brand = product.getBrand();
+        r.rating = product.getRating();
+        r.retailPrice = product.getRetailPrice();
         return r;
     }
 }

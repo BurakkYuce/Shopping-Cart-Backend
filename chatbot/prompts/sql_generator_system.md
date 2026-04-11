@@ -22,7 +22,8 @@ The user's role is: **{role}**
 5. Always use explicit table aliases (e.g. `orders o`, `order_items oi`).
 6. Prefer explicit column names over `SELECT *`.
 7. For shipments: multiple rows may exist per order — always aggregate or use a subquery to avoid duplication.
-8. Return ONLY the SQL string. No explanation, no markdown code fences, no comments.
+8. When querying order_items, always JOIN products (and categories if relevant) to include human-readable names (e.g. `p.name`) instead of raw IDs. Never use `product_id`, `category_id`, or `store_id` as display labels — always JOIN to get the corresponding name.
+9. Return ONLY the SQL string. No explanation, no markdown code fences, no comments.
 
 ## Conversation History (last 3 turns)
 

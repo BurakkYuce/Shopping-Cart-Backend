@@ -102,6 +102,11 @@ public class DataLoader implements CommandLineRunner {
         @CsvBindByName(column = "owner_id") public String ownerId;
         @CsvBindByName(column = "name") public String name;
         @CsvBindByName(column = "status") public String status;
+        @CsvBindByName(column = "description") public String description;
+        @CsvBindByName(column = "address") public String address;
+        @CsvBindByName(column = "city") public String city;
+        @CsvBindByName(column = "phone") public String phone;
+        @CsvBindByName(column = "logo_url") public String logoUrl;
     }
 
     public static class CustomerProfileRow {
@@ -124,6 +129,11 @@ public class DataLoader implements CommandLineRunner {
         @CsvBindByName(column = "name") public String name;
         @CsvBindByName(column = "unit_price") public String unitPrice;
         @CsvBindByName(column = "description") public String description;
+        @CsvBindByName(column = "image_url") public String imageUrl;
+        @CsvBindByName(column = "brand") public String brand;
+        @CsvBindByName(column = "rating") public String rating;
+        @CsvBindByName(column = "retail_price") public String retailPrice;
+        @CsvBindByName(column = "stock_quantity") public String stockQuantity;
     }
 
     public static class OrderRow {
@@ -218,6 +228,11 @@ public class DataLoader implements CommandLineRunner {
             s.setOwnerId(r.ownerId);
             s.setName(r.name);
             s.setStatus(r.status);
+            s.setDescription(r.description);
+            s.setAddress(r.address);
+            s.setCity(r.city);
+            s.setPhone(r.phone);
+            s.setLogoUrl(r.logoUrl);
             stores.add(s);
         }
         saveBatched(stores, storeRepository);
@@ -256,6 +271,11 @@ public class DataLoader implements CommandLineRunner {
             p.setName(r.name);
             p.setUnitPrice(parseDoubleSafe(r.unitPrice));
             p.setDescription(r.description);
+            p.setImageUrl(r.imageUrl);
+            p.setBrand(r.brand);
+            p.setRating(parseDoubleSafe(r.rating));
+            p.setRetailPrice(parseDoubleSafe(r.retailPrice));
+            p.setStockQuantity(parseIntSafe(r.stockQuantity) != null ? parseIntSafe(r.stockQuantity) : 9999);
             products.add(p);
         }
         saveBatched(products, productRepository);

@@ -4,11 +4,12 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastComponent } from '../../../shared/components/toast/toast.component';
+import { ChatBubbleComponent } from '../../../shared/components/chat-bubble/chat-bubble.component';
 
 @Component({
   selector: 'app-seller-shell',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastComponent, ChatBubbleComponent],
   templateUrl: './seller-shell.component.html',
 })
 export class SellerShellComponent {

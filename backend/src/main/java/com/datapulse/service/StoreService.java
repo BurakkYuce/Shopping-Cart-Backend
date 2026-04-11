@@ -28,6 +28,10 @@ public class StoreService {
     }
 
     public List<StoreResponse> getStores(Authentication auth) {
+        if (auth == null) {
+            return storeRepository.findAll().stream().map(StoreResponse::from).toList();
+        }
+
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -65,6 +69,11 @@ public class StoreService {
         store.setOwnerId(currentUser.getId());
         store.setName(request.getName());
         store.setStatus(request.getStatus() != null ? request.getStatus() : "active");
+        store.setDescription(request.getDescription());
+        store.setAddress(request.getAddress());
+        store.setCity(request.getCity());
+        store.setPhone(request.getPhone());
+        store.setLogoUrl(request.getLogoUrl());
 
         storeRepository.save(store);
         return StoreResponse.from(store);
@@ -88,6 +97,21 @@ public class StoreService {
         }
         if (request.getStatus() != null) {
             store.setStatus(request.getStatus());
+        }
+        if (request.getDescription() != null) {
+            store.setDescription(request.getDescription());
+        }
+        if (request.getAddress() != null) {
+            store.setAddress(request.getAddress());
+        }
+        if (request.getCity() != null) {
+            store.setCity(request.getCity());
+        }
+        if (request.getPhone() != null) {
+            store.setPhone(request.getPhone());
+        }
+        if (request.getLogoUrl() != null) {
+            store.setLogoUrl(request.getLogoUrl());
         }
 
         storeRepository.save(store);

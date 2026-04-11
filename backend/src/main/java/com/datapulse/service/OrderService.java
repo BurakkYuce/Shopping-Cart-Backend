@@ -50,22 +50,31 @@ public class OrderService {
     private OrderResponse buildOrderResponse(Order order) {
         List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
         Shipment shipment = shipmentRepository.findFirstByOrderId(order.getId()).orElse(null);
-        return OrderResponse.from(order, items, shipment);
+        List<String> productIds = items.stream().map(OrderItem::getProductId).distinct().toList();
+        Map<String, Product> productMap = productRepository.findAllById(productIds)
+                .stream().collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
+        return OrderResponse.from(order, items, shipment, productMap);
     }
 
     private List<OrderResponse> buildBulkResponses(List<Order> orders) {
         if (orders.isEmpty()) return List.of();
         List<String> orderIds = orders.stream().map(Order::getId).toList();
         // Fetch items and shipments in bulk to avoid N+1
-        Map<String, List<OrderItem>> itemsByOrder = orderItemRepository.findByOrderIdIn(orderIds)
+        List<OrderItem> allItems = orderItemRepository.findByOrderIdIn(orderIds);
+        Map<String, List<OrderItem>> itemsByOrder = allItems
                 .stream().collect(java.util.stream.Collectors.groupingBy(OrderItem::getOrderId));
         Map<String, Shipment> shipmentByOrder = shipmentRepository.findByOrderIdIn(orderIds)
                 .stream().collect(java.util.stream.Collectors.toMap(
                         Shipment::getOrderId, s -> s, (a, b) -> a)); // keep first if duplicates
+        // Bulk fetch products for all items
+        List<String> productIds = allItems.stream().map(OrderItem::getProductId).distinct().toList();
+        Map<String, Product> productMap = productRepository.findAllById(productIds)
+                .stream().collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
         return orders.stream()
                 .map(o -> OrderResponse.from(o,
                         itemsByOrder.getOrDefault(o.getId(), List.of()),
-                        shipmentByOrder.get(o.getId())))
+                        shipmentByOrder.get(o.getId()),
+                        productMap))
                 .toList();
     }
 
@@ -169,7 +178,9 @@ public class OrderService {
                 Map.of("orderId", orderId, "grandTotal", grandTotal, "storeId", req.getStoreId())
         );
 
-        return OrderResponse.from(order, orderItems, null);
+        Map<String, Product> productMap = productsToUpdate.stream()
+                .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
+        return OrderResponse.from(order, orderItems, null, productMap);
     }
 
     public OrderResponse updateOrderStatus(String id, String status, Authentication auth) {

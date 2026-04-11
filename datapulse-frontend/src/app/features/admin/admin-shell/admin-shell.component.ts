@@ -4,11 +4,12 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastComponent } from '../../../shared/components/toast/toast.component';
+import { ChatBubbleComponent } from '../../../shared/components/chat-bubble/chat-bubble.component';
 
 @Component({
   selector: 'app-admin-shell',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastComponent],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet, ToastComponent, ChatBubbleComponent],
   template: `
     <div class="flex min-h-screen bg-background">
       <!-- Sidebar -->
@@ -51,6 +52,7 @@ import { ToastComponent } from '../../../shared/components/toast/toast.component
         <router-outlet />
       </main>
       <app-toast />
+      <app-chat-bubble />
     </div>
   `,
 })
