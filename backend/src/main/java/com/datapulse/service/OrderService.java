@@ -3,6 +3,9 @@ package com.datapulse.service;
 import com.datapulse.dto.request.CreateOrderRequest;
 import com.datapulse.dto.response.OrderResponse;
 import com.datapulse.exception.EntityNotFoundException;
+import com.datapulse.exception.InsufficientStockException;
+import com.datapulse.exception.InvalidOrderStateException;
+import com.datapulse.exception.PaymentFailedException;
 import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.logging.LogEventPublisher;
 import com.datapulse.logging.LogEventType;
@@ -49,6 +52,7 @@ public class OrderService {
     private final ShipmentRepository shipmentRepository;
     private final StoreRepository storeRepository;
     private final LogEventPublisher logEventPublisher;
+    private final PaymentService paymentService;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -126,7 +130,7 @@ public class OrderService {
         return buildOrderResponse(order);
     }
 
-    public OrderResponse createOrder(CreateOrderRequest req, Authentication auth) {
+    public OrderResponse createOrder(CreateOrderRequest req, String idempotencyKey, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -145,7 +149,7 @@ public class OrderService {
                     .orElseThrow(() -> new EntityNotFoundException("Product", itemReq.getProductId()));
 
             if (product.getStockQuantity() < itemReq.getQuantity()) {
-                throw new IllegalStateException("Insufficient stock for product: " + product.getName()
+                throw new InsufficientStockException("Insufficient stock for product: " + product.getName()
                         + " (available: " + product.getStockQuantity() + ", requested: " + itemReq.getQuantity() + ")");
             }
 
@@ -171,6 +175,13 @@ public class OrderService {
         BigDecimal taxAmount = subtotal.multiply(TAX_RATE).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         BigDecimal grandTotal = subtotal.add(taxAmount).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
 
+        PaymentMethod paymentMethod = PaymentMethod.fromString(req.getPaymentMethod());
+        PaymentService.PaymentResult paymentResult = paymentService.charge(
+                idempotencyKey, grandTotal, paymentMethod, orderId, currentUser.getId());
+        if (!paymentResult.success()) {
+            throw new PaymentFailedException(paymentResult.failureReason());
+        }
+
         Order order = new Order();
         order.setId(orderId);
         order.setUserId(currentUser.getId());
@@ -180,7 +191,7 @@ public class OrderService {
         order.setTaxAmount(taxAmount.doubleValue());
         order.setGrandTotal(grandTotal.doubleValue());
         order.setCreatedAt(LocalDateTime.now());
-        order.setPaymentMethod(PaymentMethod.fromString(req.getPaymentMethod()));
+        order.setPaymentMethod(paymentMethod);
 
         orderRepository.save(order);
         orderItemRepository.saveAll(orderItems);
@@ -190,7 +201,10 @@ public class OrderService {
                 LogEventType.ORDER_PLACED,
                 currentUser.getId(),
                 role.name(),
-                Map.of("orderId", orderId, "grandTotal", grandTotal.doubleValue(), "storeId", req.getStoreId())
+                Map.of("orderId", orderId,
+                        "grandTotal", grandTotal.doubleValue(),
+                        "storeId", req.getStoreId(),
+                        "transactionId", paymentResult.transactionId())
         );
 
         Map<String, Product> productMap = productsToUpdate.stream()
@@ -223,7 +237,7 @@ public class OrderService {
             throw new IllegalArgumentException("Unknown order status: " + status);
         }
         if (previousStatus != null && !previousStatus.canTransitionTo(newStatus)) {
-            throw new IllegalStateException("Invalid status transition: "
+            throw new InvalidOrderStateException("Invalid status transition: "
                     + previousStatus + " -> " + newStatus);
         }
         order.setStatus(newStatus);
@@ -252,7 +266,7 @@ public class OrderService {
 
         OrderStatus previousStatus = order.getStatus();
         if (previousStatus == null || !previousStatus.canTransitionTo(OrderStatus.CANCELLED)) {
-            throw new IllegalStateException("Order cannot be cancelled from status: " + previousStatus);
+            throw new InvalidOrderStateException("Order cannot be cancelled from status: " + previousStatus);
         }
 
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
@@ -290,7 +304,7 @@ public class OrderService {
 
         OrderStatus previousStatus = order.getStatus();
         if (previousStatus != OrderStatus.DELIVERED) {
-            throw new IllegalStateException("Only delivered orders can be returned. Current status: " + previousStatus);
+            throw new InvalidOrderStateException("Only delivered orders can be returned. Current status: " + previousStatus);
         }
 
         order.setStatus(OrderStatus.RETURNED);

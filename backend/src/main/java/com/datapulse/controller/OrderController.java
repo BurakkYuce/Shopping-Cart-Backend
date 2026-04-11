@@ -37,8 +37,10 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<?> createOrder(
             @Valid @RequestBody CreateOrderRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             Authentication auth) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrder(request, auth));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(orderService.createOrder(request, idempotencyKey, auth));
     }
 
     @PatchMapping("/{id}/status")

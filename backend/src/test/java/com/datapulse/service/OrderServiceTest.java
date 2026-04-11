@@ -62,6 +62,9 @@ class OrderServiceTest {
     @Mock
     private LogEventPublisher logEventPublisher;
 
+    @Mock
+    private PaymentService paymentService;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -119,8 +122,10 @@ class OrderServiceTest {
         when(productRepository.findById("prod1")).thenReturn(Optional.of(product));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderItemRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentService.charge(any(), any(), any(), any(), any()))
+                .thenReturn(PaymentService.PaymentResult.ok("txn_test"));
 
-        OrderResponse response = orderService.createOrder(req, auth);
+        OrderResponse response = orderService.createOrder(req, "idem-key-1", auth);
 
         assertNotNull(response);
         // subtotal 20.0 + 20% KDV = 24.0

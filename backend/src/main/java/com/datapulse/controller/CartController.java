@@ -1,6 +1,7 @@
 package com.datapulse.controller;
 
 import com.datapulse.dto.request.AddToCartRequest;
+import com.datapulse.dto.request.CheckoutRequest;
 import com.datapulse.dto.request.CreateOrderRequest;
 import com.datapulse.dto.response.CartResponse;
 import com.datapulse.dto.response.OrderResponse;
@@ -60,13 +61,14 @@ public class CartController {
 
     @PostMapping("/checkout")
     public ResponseEntity<OrderResponse> checkout(
-            @RequestBody Map<String, String> body,
+            @Valid @RequestBody CheckoutRequest body,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             Authentication auth) {
-        String storeId = body.get("storeId");
-        String paymentMethod = body.getOrDefault("paymentMethod", "card");
-
-        CreateOrderRequest orderRequest = cartService.toOrderRequest(storeId, paymentMethod, auth);
-        OrderResponse order = orderService.createOrder(orderRequest, auth);
+        CreateOrderRequest orderRequest = cartService.toOrderRequest(body.getStoreId(), body.getPaymentMethod(), auth);
+        orderRequest.setKvkkConsent(body.getKvkkConsent());
+        orderRequest.setDistanceSaleConsent(body.getDistanceSaleConsent());
+        orderRequest.setPreInformationConsent(body.getPreInformationConsent());
+        OrderResponse order = orderService.createOrder(orderRequest, idempotencyKey, auth);
 
         cartService.clearCart(auth);
 
