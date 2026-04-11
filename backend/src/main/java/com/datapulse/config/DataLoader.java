@@ -290,10 +290,10 @@ public class DataLoader implements CommandLineRunner {
             o.setId(r.id);
             o.setUserId(r.userId);
             o.setStoreId(r.storeId);
-            o.setStatus(r.status);
+            o.setStatus(com.datapulse.model.enums.OrderStatus.fromString(r.status));
             o.setGrandTotal(parseDoubleSafe(r.grandTotal));
             o.setCreatedAt(parseDateTime(r.createdAt));
-            o.setPaymentMethod(r.paymentMethod);
+            o.setPaymentMethod(com.datapulse.model.enums.PaymentMethod.fromString(r.paymentMethod));
             orders.add(o);
         }
         saveBatched(orders, orderRepository);

@@ -4,6 +4,8 @@ import com.datapulse.model.Order;
 import com.datapulse.model.OrderItem;
 import com.datapulse.model.Product;
 import com.datapulse.model.Shipment;
+import com.datapulse.model.enums.OrderStatus;
+import com.datapulse.model.enums.PaymentMethod;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,10 +17,12 @@ public class OrderResponse {
     private String id;
     private String userId;
     private String storeId;
-    private String status;
+    private OrderStatus status;
+    private Double subtotal;
+    private Double taxAmount;
     private Double grandTotal;
     private LocalDateTime createdAt;
-    private String paymentMethod;
+    private PaymentMethod paymentMethod;
     private List<OrderItemDetail> items;
     private String shipmentStatus;
 
@@ -52,6 +56,8 @@ public class OrderResponse {
         r.userId = order.getUserId();
         r.storeId = order.getStoreId();
         r.status = order.getStatus();
+        r.subtotal = order.getSubtotal();
+        r.taxAmount = order.getTaxAmount();
         r.grandTotal = order.getGrandTotal();
         r.createdAt = order.getCreatedAt();
         r.paymentMethod = order.getPaymentMethod();

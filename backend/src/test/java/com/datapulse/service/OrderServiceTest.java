@@ -8,6 +8,8 @@ import com.datapulse.model.Order;
 import com.datapulse.model.Product;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.User;
+import com.datapulse.model.enums.OrderStatus;
+import com.datapulse.model.enums.PaymentMethod;
 import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.OrderRepository;
 import com.datapulse.repository.ProductRepository;
@@ -84,8 +86,8 @@ class OrderServiceTest {
         Pageable pageable = PageRequest.of(0, 50);
         Authentication auth = buildIndividualAuth("user1");
 
-        Order order1 = new Order("order1", "user1", null, "store1", null, "pending", 100.0, LocalDateTime.now(), "card");
-        Order order2 = new Order("order2", "user1", null, "store1", null, "shipped", 200.0, LocalDateTime.now(), "cash");
+        Order order1 = buildOrder("order1", "user1", "store1", OrderStatus.PENDING, 100.0, PaymentMethod.CREDIT_CARD);
+        Order order2 = buildOrder("order2", "user1", "store1", OrderStatus.SHIPPED, 200.0, PaymentMethod.COD);
         List<Order> orders = List.of(order1, order2);
         Page<Order> orderPage = new PageImpl<>(orders, pageable, orders.size());
 
@@ -121,14 +123,30 @@ class OrderServiceTest {
         OrderResponse response = orderService.createOrder(req, auth);
 
         assertNotNull(response);
-        assertEquals(20.0, response.getGrandTotal());
+        // subtotal 20.0 + 20% KDV = 24.0
+        assertEquals(24.0, response.getGrandTotal());
+        assertEquals(20.0, response.getSubtotal());
+        assertEquals(4.0, response.getTaxAmount());
+    }
+
+    private Order buildOrder(String id, String userId, String storeId, OrderStatus status,
+                             double grandTotal, PaymentMethod paymentMethod) {
+        Order o = new Order();
+        o.setId(id);
+        o.setUserId(userId);
+        o.setStoreId(storeId);
+        o.setStatus(status);
+        o.setGrandTotal(grandTotal);
+        o.setCreatedAt(LocalDateTime.now());
+        o.setPaymentMethod(paymentMethod);
+        return o;
     }
 
     @Test
     void getOrderById_wrongUser_throwsUnauthorized() {
         Authentication auth = buildIndividualAuth("user1");
 
-        Order order = new Order("order1", "other-user", null, "store1", null, "pending", 50.0, LocalDateTime.now(), "card");
+        Order order = buildOrder("order1", "other-user", "store1", OrderStatus.PENDING, 50.0, PaymentMethod.CREDIT_CARD);
 
         when(orderRepository.findById("order1")).thenReturn(Optional.of(order));
 

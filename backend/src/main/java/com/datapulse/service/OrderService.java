@@ -12,6 +12,8 @@ import com.datapulse.model.Product;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.Shipment;
 import com.datapulse.model.Store;
+import com.datapulse.model.enums.OrderStatus;
+import com.datapulse.model.enums.PaymentMethod;
 import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.OrderRepository;
 import com.datapulse.repository.ProductRepository;
@@ -26,6 +28,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,6 +39,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+
+    private static final BigDecimal TAX_RATE = new BigDecimal("0.20");
+    private static final int MONEY_SCALE = 2;
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -130,7 +137,7 @@ public class OrderService {
         String orderId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 
         List<OrderItem> orderItems = new ArrayList<>();
-        double grandTotal = 0.0;
+        BigDecimal subtotal = BigDecimal.ZERO;
 
         List<Product> productsToUpdate = new ArrayList<>();
         for (CreateOrderRequest.OrderItemRequest itemReq : req.getItems()) {
@@ -145,8 +152,10 @@ public class OrderService {
             product.setStockQuantity(product.getStockQuantity() - itemReq.getQuantity());
             productsToUpdate.add(product);
 
-            double itemPrice = product.getUnitPrice() * itemReq.getQuantity();
-            grandTotal += itemPrice;
+            BigDecimal unitPrice = BigDecimal.valueOf(product.getUnitPrice());
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(itemReq.getQuantity()))
+                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            subtotal = subtotal.add(lineTotal);
 
             String itemId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
             OrderItem orderItem = new OrderItem();
@@ -154,18 +163,24 @@ public class OrderService {
             orderItem.setOrderId(orderId);
             orderItem.setProductId(itemReq.getProductId());
             orderItem.setQuantity(itemReq.getQuantity());
-            orderItem.setPrice(itemPrice);
+            orderItem.setPrice(lineTotal.doubleValue());
             orderItems.add(orderItem);
         }
+
+        subtotal = subtotal.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal taxAmount = subtotal.multiply(TAX_RATE).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal grandTotal = subtotal.add(taxAmount).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
 
         Order order = new Order();
         order.setId(orderId);
         order.setUserId(currentUser.getId());
         order.setStoreId(req.getStoreId());
-        order.setStatus("pending");
-        order.setGrandTotal(grandTotal);
+        order.setStatus(OrderStatus.PENDING);
+        order.setSubtotal(subtotal.doubleValue());
+        order.setTaxAmount(taxAmount.doubleValue());
+        order.setGrandTotal(grandTotal.doubleValue());
         order.setCreatedAt(LocalDateTime.now());
-        order.setPaymentMethod(req.getPaymentMethod());
+        order.setPaymentMethod(PaymentMethod.fromString(req.getPaymentMethod()));
 
         orderRepository.save(order);
         orderItemRepository.saveAll(orderItems);
@@ -175,7 +190,7 @@ public class OrderService {
                 LogEventType.ORDER_PLACED,
                 currentUser.getId(),
                 role.name(),
-                Map.of("orderId", orderId, "grandTotal", grandTotal, "storeId", req.getStoreId())
+                Map.of("orderId", orderId, "grandTotal", grandTotal.doubleValue(), "storeId", req.getStoreId())
         );
 
         Map<String, Product> productMap = productsToUpdate.stream()
@@ -200,15 +215,25 @@ public class OrderService {
             throw new UnauthorizedAccessException("Access denied: ADMIN or CORPORATE store owner required");
         }
 
-        String previousStatus = order.getStatus();
-        order.setStatus(status);
+        OrderStatus previousStatus = order.getStatus();
+        OrderStatus newStatus;
+        try {
+            newStatus = OrderStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown order status: " + status);
+        }
+        if (previousStatus != null && !previousStatus.canTransitionTo(newStatus)) {
+            throw new IllegalStateException("Invalid status transition: "
+                    + previousStatus + " -> " + newStatus);
+        }
+        order.setStatus(newStatus);
         orderRepository.save(order);
 
         logEventPublisher.publish(
                 LogEventType.ORDER_STATUS_CHANGED,
                 currentUser.getId(),
                 role.name(),
-                Map.of("orderId", id, "previousStatus", previousStatus != null ? previousStatus : "", "newStatus", status)
+                Map.of("orderId", id, "previousStatus", previousStatus != null ? previousStatus.name() : "", "newStatus", newStatus.name())
         );
 
         return buildOrderResponse(order);
@@ -225,11 +250,11 @@ public class OrderService {
             throw new UnauthorizedAccessException("Access denied: this order does not belong to you");
         }
 
-        if (!"pending".equals(order.getStatus())) {
-            throw new IllegalStateException("Only pending orders can be cancelled. Current status: " + order.getStatus());
+        OrderStatus previousStatus = order.getStatus();
+        if (previousStatus == null || !previousStatus.canTransitionTo(OrderStatus.CANCELLED)) {
+            throw new IllegalStateException("Order cannot be cancelled from status: " + previousStatus);
         }
 
-        // Restore stock
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
         for (OrderItem item : items) {
             Product product = productRepository.findById(item.getProductId()).orElse(null);
@@ -239,14 +264,14 @@ public class OrderService {
             }
         }
 
-        order.setStatus("cancelled");
+        order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
 
         logEventPublisher.publish(
                 LogEventType.ORDER_STATUS_CHANGED,
                 currentUser.getId(),
                 role.name(),
-                Map.of("orderId", id, "previousStatus", "pending", "newStatus", "cancelled")
+                Map.of("orderId", id, "previousStatus", previousStatus.name(), "newStatus", OrderStatus.CANCELLED.name())
         );
 
         return buildOrderResponse(order);
@@ -263,18 +288,19 @@ public class OrderService {
             throw new UnauthorizedAccessException("Access denied: this order does not belong to you");
         }
 
-        if (!"shipped".equals(order.getStatus()) && !"delivered".equals(order.getStatus())) {
-            throw new IllegalStateException("Only shipped or delivered orders can be returned. Current status: " + order.getStatus());
+        OrderStatus previousStatus = order.getStatus();
+        if (previousStatus != OrderStatus.DELIVERED) {
+            throw new IllegalStateException("Only delivered orders can be returned. Current status: " + previousStatus);
         }
 
-        order.setStatus("return_requested");
+        order.setStatus(OrderStatus.RETURNED);
         orderRepository.save(order);
 
         logEventPublisher.publish(
                 LogEventType.ORDER_STATUS_CHANGED,
                 currentUser.getId(),
                 role.name(),
-                Map.of("orderId", id, "previousStatus", order.getStatus(), "newStatus", "return_requested")
+                Map.of("orderId", id, "previousStatus", previousStatus.name(), "newStatus", OrderStatus.RETURNED.name())
         );
 
         return buildOrderResponse(order);

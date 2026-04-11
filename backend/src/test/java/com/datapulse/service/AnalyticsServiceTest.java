@@ -7,6 +7,8 @@ import com.datapulse.model.CustomerProfile;
 import com.datapulse.model.Order;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.User;
+import com.datapulse.model.enums.OrderStatus;
+import com.datapulse.model.enums.PaymentMethod;
 import com.datapulse.repository.CategoryRepository;
 import com.datapulse.repository.CustomerProfileRepository;
 import com.datapulse.repository.OrderItemRepository;
@@ -81,9 +83,9 @@ class AnalyticsServiceTest {
         Authentication auth = buildAdminAuth();
 
         LocalDateTime now = LocalDateTime.now();
-        Order o1 = new Order("ord1", "user1", null, "store1", null, "completed", 100.0, now, "card");
-        Order o2 = new Order("ord2", "user2", null, "store1", null, "completed", 200.0, now, "card");
-        Order o3 = new Order("ord3", "user3", null, "store1", null, "completed", 300.0, now, "cash");
+        Order o1 = buildOrder("ord1", "user1", "store1", OrderStatus.DELIVERED, 100.0, PaymentMethod.CREDIT_CARD, now);
+        Order o2 = buildOrder("ord2", "user2", "store1", OrderStatus.DELIVERED, 200.0, PaymentMethod.CREDIT_CARD, now);
+        Order o3 = buildOrder("ord3", "user3", "store1", OrderStatus.DELIVERED, 300.0, PaymentMethod.COD, now);
 
         when(orderRepository.findByCreatedAtBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
                 .thenReturn(List.of(o1, o2, o3));
@@ -118,5 +120,18 @@ class AnalyticsServiceTest {
         assertNotNull(response);
         assertEquals(35.0, response.getAverageAge());
         assertTrue(response.getSpendByMembership().containsKey("Gold"));
+    }
+
+    private Order buildOrder(String id, String userId, String storeId, OrderStatus status,
+                             double grandTotal, PaymentMethod paymentMethod, LocalDateTime createdAt) {
+        Order o = new Order();
+        o.setId(id);
+        o.setUserId(userId);
+        o.setStoreId(storeId);
+        o.setStatus(status);
+        o.setGrandTotal(grandTotal);
+        o.setCreatedAt(createdAt);
+        o.setPaymentMethod(paymentMethod);
+        return o;
     }
 }

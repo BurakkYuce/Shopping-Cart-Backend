@@ -1,5 +1,7 @@
 package com.datapulse.model;
 
+import com.datapulse.model.enums.OrderStatus;
+import com.datapulse.model.enums.PaymentMethod;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -40,7 +42,14 @@ public class Order {
     @JsonIgnore
     private Store store;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private OrderStatus status;
+
+    @Column(name = "subtotal")
+    private Double subtotal;
+
+    @Column(name = "tax_amount")
+    private Double taxAmount;
 
     @Column(name = "grand_total")
     private Double grandTotal;
@@ -48,6 +57,7 @@ public class Order {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "payment_method")
-    private String paymentMethod;
+    private PaymentMethod paymentMethod;
 }
