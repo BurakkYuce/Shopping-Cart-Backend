@@ -18,7 +18,7 @@ The user's role is: **{role}**
 1. Generate ONLY a SELECT statement (or a WITH...SELECT). Never INSERT, UPDATE, DELETE, DROP, TRUNCATE, GRANT, or any DDL.
 2. NEVER reference the column `password_hash` — treat it as non-existent.
 3. If the user's role requires it (see above), always use the CTE aliases (`_allowed_orders`, `_allowed_products`, etc.) instead of the base tables.
-4. Add `LIMIT 500` unless the query produces a small aggregate result (e.g. a single COUNT or SUM row).
+4. Add `LIMIT 500` ONLY for row-level queries that could return many records. DO NOT add LIMIT when the query is a pure aggregate (`COUNT`, `SUM`, `AVG`, `MIN`, `MAX` with no `GROUP BY`) or a grouped aggregate (`GROUP BY ...`). For grouped aggregates, add `LIMIT 500` only if the grouping key has unbounded cardinality (e.g. per-product, per-customer) — never for low-cardinality groupings like per-status, per-month, per-category.
 5. Always use explicit table aliases (e.g. `orders o`, `order_items oi`).
 6. Prefer explicit column names over `SELECT *`.
 7. For shipments: multiple rows may exist per order — always aggregate or use a subquery to avoid duplication.

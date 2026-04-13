@@ -113,6 +113,7 @@ public class CartService {
             r.setId(ci.getId());
             r.setProductId(ci.getProductId());
             r.setProductName(product != null ? product.getName() : "Unknown");
+            r.setImageUrl(product != null ? product.getImageUrl() : null);
             r.setUnitPrice(product != null ? product.getUnitPrice() : 0.0);
             r.setQuantity(ci.getQuantity());
             r.setLineTotal(r.getUnitPrice() * ci.getQuantity());

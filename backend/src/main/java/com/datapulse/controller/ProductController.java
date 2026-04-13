@@ -9,6 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.Nullable;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,6 +57,7 @@ public class ProductController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('CORPORATE','ADMIN')")
     public ResponseEntity<?> createProduct(
             @Valid @RequestBody CreateProductRequest request,
             Authentication auth) {
@@ -63,6 +65,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CORPORATE','ADMIN')")
     public ResponseEntity<?> updateProduct(
             @PathVariable String id,
             @Valid @RequestBody CreateProductRequest request,
@@ -71,6 +74,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('CORPORATE','ADMIN')")
     public ResponseEntity<Void> deleteProduct(@PathVariable String id, Authentication auth) {
         productService.deleteProduct(id, auth);
         return ResponseEntity.noContent().build();

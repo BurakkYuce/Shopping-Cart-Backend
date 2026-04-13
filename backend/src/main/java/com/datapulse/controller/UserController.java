@@ -25,6 +25,13 @@ public class UserController {
         return ResponseEntity.ok(userService.getUserById(id, auth));
     }
 
+    @PatchMapping("/me")
+    public ResponseEntity<?> updateCurrentUser(
+            Authentication auth,
+            @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(userService.updateCurrentUser(auth, body));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateUser(
             @PathVariable String id,

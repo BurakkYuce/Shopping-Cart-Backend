@@ -57,6 +57,11 @@ public class UserService {
                 .toList();
     }
 
+    public UserResponse updateCurrentUser(Authentication auth, Map<String, Object> updates) {
+        UserDetailsImpl currentUser = extractCurrentUser(auth);
+        return updateUser(currentUser.getId(), auth, updates);
+    }
+
     public UserResponse updateUser(String id, Authentication auth, Map<String, Object> updates) {
         UserDetailsImpl currentUser = extractCurrentUser(auth);
         boolean isAdmin = currentUser.getRole() == RoleType.ADMIN;

@@ -67,5 +67,31 @@ GENERAL SQL RULES:
 """
 
 
+_DYNAMIC_CONTEXT_CACHE: str | None = None
+
+
+def _load_dynamic_context() -> str:
+    """Fetch real category names and top brands from DB at startup."""
+    try:
+        from db.executor import execute_query
+        categories = execute_query("SELECT DISTINCT name FROM categories ORDER BY name")
+        brands = execute_query("SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL ORDER BY brand LIMIT 50")
+        cat_names = [row.get("name", "") for row in categories if row.get("name")]
+        brand_names = [row.get("brand", "") for row in brands if row.get("brand")]
+        parts = []
+        if cat_names:
+            parts.append(f"\nKNOWN CATEGORIES: {', '.join(cat_names)}")
+        if brand_names:
+            parts.append(f"\nKNOWN BRANDS (top 50): {', '.join(brand_names)}")
+        if parts:
+            parts.append("\nUse these exact names when filtering by category or brand (case-insensitive ILIKE is acceptable).")
+        return "\n".join(parts)
+    except Exception:
+        return ""
+
+
 def get_schema_context() -> str:
-    return SCHEMA_CONTEXT.strip()
+    global _DYNAMIC_CONTEXT_CACHE
+    if _DYNAMIC_CONTEXT_CACHE is None:
+        _DYNAMIC_CONTEXT_CACHE = SCHEMA_CONTEXT.strip() + _load_dynamic_context()
+    return _DYNAMIC_CONTEXT_CACHE
