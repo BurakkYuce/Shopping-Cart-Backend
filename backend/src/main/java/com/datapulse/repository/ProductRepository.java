@@ -12,6 +12,9 @@ import java.util.List;
 public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findByStoreId(String storeId);
     List<Product> findByStoreIdIn(List<String> storeIds);
+
+    @Query("SELECT p FROM Product p WHERE p.storeId = :storeId AND p.stockQuantity <= p.lowStockThreshold")
+    List<Product> findLowStockByStoreId(@Param("storeId") String storeId);
     Page<Product> findAll(Pageable pageable);
     Page<Product> findByStoreIdIn(List<String> storeIds, Pageable pageable);
 

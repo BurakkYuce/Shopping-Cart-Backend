@@ -4,11 +4,14 @@ import com.datapulse.dto.request.CreateReviewRequest;
 import com.datapulse.dto.response.ReviewResponse;
 import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
+import com.datapulse.model.Product;
 import com.datapulse.model.Review;
 import com.datapulse.model.RoleType;
+import com.datapulse.model.Store;
 import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.ProductRepository;
 import com.datapulse.repository.ReviewRepository;
+import com.datapulse.repository.StoreRepository;
 import com.datapulse.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -25,6 +28,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
+    private final StoreRepository storeRepository;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -87,5 +91,31 @@ public class ReviewService {
         }
 
         reviewRepository.delete(review);
+    }
+
+    public ReviewResponse addSellerResponse(String reviewId, String response, Authentication auth) {
+        UserDetailsImpl currentUser = getCurrentUser(auth);
+        RoleType role = currentUser.getRole();
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new EntityNotFoundException("Review", reviewId));
+
+        Product product = productRepository.findById(review.getProductId())
+                .orElseThrow(() -> new EntityNotFoundException("Product", review.getProductId()));
+
+        if (role == RoleType.CORPORATE) {
+            Store store = storeRepository.findById(product.getStoreId())
+                    .orElseThrow(() -> new EntityNotFoundException("Store", product.getStoreId()));
+            if (!store.getOwnerId().equals(currentUser.getId())) {
+                throw new UnauthorizedAccessException("Access denied: you do not own this product's store");
+            }
+        } else if (role != RoleType.ADMIN) {
+            throw new UnauthorizedAccessException("Access denied: CORPORATE or ADMIN role required");
+        }
+
+        review.setSellerResponse(response);
+        review.setSellerResponseDate(java.time.LocalDateTime.now());
+        reviewRepository.save(review);
+        return ReviewResponse.from(review);
     }
 }

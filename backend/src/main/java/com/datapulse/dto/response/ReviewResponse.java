@@ -4,6 +4,7 @@ import com.datapulse.model.Review;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Data
 public class ReviewResponse {
@@ -18,6 +19,8 @@ public class ReviewResponse {
     private String sentiment;
     private String verifiedPurchase;
     private LocalDate reviewDate;
+    private String sellerResponse;
+    private LocalDateTime sellerResponseDate;
 
     public static ReviewResponse from(Review review) {
         ReviewResponse r = new ReviewResponse();
@@ -32,6 +35,8 @@ public class ReviewResponse {
         r.sentiment = review.getSentiment();
         r.verifiedPurchase = review.getVerifiedPurchase();
         r.reviewDate = review.getReviewDate();
+        r.sellerResponse = review.getSellerResponse();
+        r.sellerResponseDate = review.getSellerResponseDate();
         return r;
     }
 }

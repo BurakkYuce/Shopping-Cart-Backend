@@ -60,10 +60,23 @@ public class Product {
 
     private String brand;
 
+    @Column(name = "brand_id")
+    private String brandId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id", insertable = false, updatable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @JsonIgnore
+    private Brand brandEntity;
+
     private Double rating;
 
     @Column(name = "retail_price")
     private Double retailPrice;
+
+    @Column(name = "low_stock_threshold")
+    private Integer lowStockThreshold = 10;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

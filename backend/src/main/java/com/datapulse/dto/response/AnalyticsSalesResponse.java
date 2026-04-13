@@ -10,6 +10,9 @@ public class AnalyticsSalesResponse {
     private Long orderCount;
     private Double averageOrderValue;
     private Map<String, Double> revenueByDay;
+    private Map<String, Double> revenueByWeek;
+    private Map<String, Double> revenueByMonth;
+    private Map<String, Double> revenueByCategory;
     private String fromDate;
     private String toDate;
 }

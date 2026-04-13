@@ -62,4 +62,10 @@ public class Review {
 
     @Column(name = "review_date")
     private LocalDate reviewDate;
+
+    @Column(name = "seller_response", length = 2000)
+    private String sellerResponse;
+
+    @Column(name = "seller_response_date")
+    private java.time.LocalDateTime sellerResponseDate;
 }
