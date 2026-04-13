@@ -1,7 +1,12 @@
 package com.datapulse.dto.response;
 
 import com.datapulse.model.Product;
+import com.datapulse.model.ProductAttribute;
 import lombok.Data;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Data
 public class ProductResponse {
@@ -15,8 +20,10 @@ public class ProductResponse {
     private String imageUrl;
     private Integer stockQuantity;
     private String brand;
+    private String brandId;
     private Double rating;
     private Double retailPrice;
+    private Map<String, String> attributes;
 
     public static ProductResponse from(Product product) {
         ProductResponse r = new ProductResponse();
@@ -30,8 +37,18 @@ public class ProductResponse {
         r.imageUrl = product.getImageUrl();
         r.stockQuantity = product.getStockQuantity();
         r.brand = product.getBrand();
+        r.brandId = product.getBrandId();
         r.rating = product.getRating();
         r.retailPrice = product.getRetailPrice();
+        return r;
+    }
+
+    public static ProductResponse from(Product product, List<ProductAttribute> attrs) {
+        ProductResponse r = from(product);
+        if (attrs != null && !attrs.isEmpty()) {
+            r.attributes = attrs.stream()
+                    .collect(Collectors.toMap(ProductAttribute::getAttrKey, a -> a.getAttrValue() != null ? a.getAttrValue() : ""));
+        }
         return r;
     }
 }

@@ -9,6 +9,7 @@ import com.datapulse.logging.LogEventType;
 import com.datapulse.model.Product;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.Store;
+import com.datapulse.repository.ProductAttributeRepository;
 import com.datapulse.repository.ProductRepository;
 import com.datapulse.repository.StoreRepository;
 import com.datapulse.security.UserDetailsImpl;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductAttributeRepository productAttributeRepository;
     private final StoreRepository storeRepository;
     private final LogEventPublisher logEventPublisher;
 
@@ -67,7 +69,8 @@ public class ProductService {
                 Map.of("productId", id, "productName", product.getName())
         );
 
-        return ProductResponse.from(product);
+        var attrs = productAttributeRepository.findByProductId(id);
+        return ProductResponse.from(product, attrs);
     }
 
     public ProductResponse createProduct(CreateProductRequest req, Authentication auth) {
@@ -78,12 +81,14 @@ public class ProductService {
             throw new UnauthorizedAccessException("Access denied: CORPORATE or ADMIN role required");
         }
 
-        if (role == RoleType.CORPORATE) {
-            Store store = storeRepository.findById(req.getStoreId())
-                    .orElseThrow(() -> new EntityNotFoundException("Store", req.getStoreId()));
-            if (!store.getOwnerId().equals(currentUser.getId())) {
-                throw new UnauthorizedAccessException("Access denied: you do not own this store");
-            }
+        Store store = storeRepository.findById(req.getStoreId())
+                .orElseThrow(() -> new EntityNotFoundException("Store", req.getStoreId()));
+        if (role == RoleType.CORPORATE && !store.getOwnerId().equals(currentUser.getId())) {
+            throw new UnauthorizedAccessException("Access denied: you do not own this store");
+        }
+        if (store.getStatus() != com.datapulse.model.enums.StoreStatus.ACTIVE) {
+            throw new UnauthorizedAccessException(
+                    "Store is " + store.getStatus().name() + " — cannot create products");
         }
 
         String id = UUID.randomUUID().toString().replace("-", "").substring(0, 8);

@@ -42,4 +42,19 @@ public class Shipment {
 
     @Column(name = "weight_gms")
     private Integer weightGms;
+
+    @Column(name = "warehouse_block", length = 10)
+    private String warehouseBlock;
+
+    @Column(name = "cost")
+    private Double cost;
+
+    @Column(name = "prior_purchases")
+    private Integer priorPurchases;
+
+    @Column(name = "importance", length = 20)
+    private String importance;
+
+    @Column(name = "discount_offered")
+    private Double discountOffered;
 }
