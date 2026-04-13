@@ -60,4 +60,31 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method")
     private PaymentMethod paymentMethod;
+
+    @Column(name = "tracking_number", length = 100)
+    private String trackingNumber;
+
+    @Column(length = 50)
+    private String carrier;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "return_deadline")
+    private LocalDateTime returnDeadline;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "customer_notes", length = 1000)
+    private String customerNotes;
+
+    @Column(name = "refunded_at")
+    private LocalDateTime refundedAt;
+
+    @Column(length = 3)
+    private String currency = "TRY";
+
+    @Column(name = "exchange_rate")
+    private Double exchangeRate = 1.0;
 }

@@ -69,7 +69,12 @@ class OrderServiceTest {
     private OrderService orderService;
 
     private Authentication buildIndividualAuth(String userId) {
-        User user = new User(userId, "user@example.com", "hashed", RoleType.INDIVIDUAL, "male");
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+        user.setPasswordHash("hashed");
+        user.setRoleType(RoleType.INDIVIDUAL);
+        user.setGender("male");
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
         Authentication auth = mock(Authentication.class);
         when(auth.getPrincipal()).thenReturn(userDetails);
@@ -77,7 +82,11 @@ class OrderServiceTest {
     }
 
     private Authentication buildAdminAuth() {
-        User user = new User("admin1", "admin@example.com", "hashed", RoleType.ADMIN, null);
+        User user = new User();
+        user.setId("admin1");
+        user.setEmail("admin@example.com");
+        user.setPasswordHash("hashed");
+        user.setRoleType(RoleType.ADMIN);
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
         Authentication auth = mock(Authentication.class);
         when(auth.getPrincipal()).thenReturn(userDetails);
@@ -108,7 +117,15 @@ class OrderServiceTest {
     void createOrder_success() {
         Authentication auth = buildIndividualAuth("user1");
 
-        Product product = new Product("prod1", "store1", null, "cat1", null, "SKU-01", "Widget", 10.0, "A widget", null, 100, null, null, null, null);
+        Product product = new Product();
+        product.setId("prod1");
+        product.setStoreId("store1");
+        product.setCategoryId("cat1");
+        product.setSku("SKU-01");
+        product.setName("Widget");
+        product.setUnitPrice(10.0);
+        product.setDescription("A widget");
+        product.setStockQuantity(100);
 
         CreateOrderRequest req = new CreateOrderRequest();
         req.setStoreId("store1");

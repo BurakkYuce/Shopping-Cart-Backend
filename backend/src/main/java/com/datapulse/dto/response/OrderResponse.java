@@ -25,6 +25,16 @@ public class OrderResponse {
     private PaymentMethod paymentMethod;
     private List<OrderItemDetail> items;
     private String shipmentStatus;
+    private String trackingNumber;
+    private String carrier;
+    private LocalDateTime deliveredAt;
+    private LocalDateTime returnDeadline;
+    private String cancellationReason;
+    private String customerNotes;
+    private LocalDateTime refundedAt;
+    private String statusTr;
+    private String currency;
+    private Double exchangeRate;
 
     @Data
     public static class OrderItemDetail {
@@ -63,6 +73,16 @@ public class OrderResponse {
         r.paymentMethod = order.getPaymentMethod();
         r.items = items != null ? items.stream().map(i -> OrderItemDetail.from(i, productMap)).toList() : List.of();
         r.shipmentStatus = shipment != null ? shipment.getStatus() : null;
+        r.trackingNumber = order.getTrackingNumber();
+        r.carrier = order.getCarrier();
+        r.deliveredAt = order.getDeliveredAt();
+        r.returnDeadline = order.getReturnDeadline();
+        r.cancellationReason = order.getCancellationReason();
+        r.customerNotes = order.getCustomerNotes();
+        r.refundedAt = order.getRefundedAt();
+        r.statusTr = order.getStatus() != null ? order.getStatus().getTrLabel() : null;
+        r.currency = order.getCurrency();
+        r.exchangeRate = order.getExchangeRate();
         return r;
     }
 }

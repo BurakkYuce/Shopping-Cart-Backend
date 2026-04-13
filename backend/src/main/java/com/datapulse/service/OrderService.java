@@ -17,9 +17,11 @@ import com.datapulse.model.Shipment;
 import com.datapulse.model.Store;
 import com.datapulse.model.enums.OrderStatus;
 import com.datapulse.model.enums.PaymentMethod;
+import com.datapulse.model.ReturnRequest;
 import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.OrderRepository;
 import com.datapulse.repository.ProductRepository;
+import com.datapulse.repository.ReturnRequestRepository;
 import com.datapulse.repository.ShipmentRepository;
 import com.datapulse.repository.StoreRepository;
 import com.datapulse.security.UserDetailsImpl;
@@ -51,6 +53,7 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ShipmentRepository shipmentRepository;
     private final StoreRepository storeRepository;
+    private final ReturnRequestRepository returnRequestRepository;
     private final LogEventPublisher logEventPublisher;
     private final PaymentService paymentService;
 
@@ -241,6 +244,10 @@ public class OrderService {
                     + previousStatus + " -> " + newStatus);
         }
         order.setStatus(newStatus);
+        if (newStatus == OrderStatus.DELIVERED) {
+            order.setDeliveredAt(LocalDateTime.now());
+            order.setReturnDeadline(LocalDateTime.now().plusDays(14));
+        }
         orderRepository.save(order);
 
         logEventPublisher.publish(
@@ -253,7 +260,7 @@ public class OrderService {
         return buildOrderResponse(order);
     }
 
-    public OrderResponse cancelOrder(String id, Authentication auth) {
+    public OrderResponse cancelOrder(String id, String reason, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -279,6 +286,8 @@ public class OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+        order.setCancellationReason(reason);
+        order.setRefundedAt(LocalDateTime.now());
         orderRepository.save(order);
 
         logEventPublisher.publish(
@@ -291,32 +300,53 @@ public class OrderService {
         return buildOrderResponse(order);
     }
 
-    public OrderResponse returnOrder(String id, Authentication auth) {
+    public ReturnRequest createReturnRequest(String orderId, String reason, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
-        RoleType role = currentUser.getRole();
 
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Order", id));
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new EntityNotFoundException("Order", orderId));
 
-        if (role == RoleType.INDIVIDUAL && !order.getUserId().equals(currentUser.getId())) {
+        if (!order.getUserId().equals(currentUser.getId())) {
             throw new UnauthorizedAccessException("Access denied: this order does not belong to you");
         }
 
-        OrderStatus previousStatus = order.getStatus();
-        if (previousStatus != OrderStatus.DELIVERED) {
-            throw new InvalidOrderStateException("Only delivered orders can be returned. Current status: " + previousStatus);
+        if (order.getStatus() != OrderStatus.DELIVERED) {
+            throw new InvalidOrderStateException("Only delivered orders can be returned. Current status: " + order.getStatus());
         }
 
+        if (order.getReturnDeadline() != null && LocalDateTime.now().isAfter(order.getReturnDeadline())) {
+            throw new InvalidOrderStateException("Return window has expired (14 days after delivery)");
+        }
+        if (order.getDeliveredAt() != null && order.getReturnDeadline() == null
+                && LocalDateTime.now().isAfter(order.getDeliveredAt().plusDays(14))) {
+            throw new InvalidOrderStateException("Return window has expired (14 days after delivery)");
+        }
+
+        String requestId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        ReturnRequest rr = new ReturnRequest();
+        rr.setId(requestId);
+        rr.setOrderId(orderId);
+        rr.setUserId(currentUser.getId());
+        rr.setReason(reason);
+        rr.setStatus("PENDING");
+        rr.setCreatedAt(LocalDateTime.now());
+        returnRequestRepository.save(rr);
+
         order.setStatus(OrderStatus.RETURNED);
+        order.setRefundedAt(LocalDateTime.now());
         orderRepository.save(order);
 
         logEventPublisher.publish(
                 LogEventType.ORDER_STATUS_CHANGED,
                 currentUser.getId(),
-                role.name(),
-                Map.of("orderId", id, "previousStatus", previousStatus.name(), "newStatus", OrderStatus.RETURNED.name())
+                currentUser.getRole().name(),
+                Map.of("orderId", orderId, "returnRequestId", requestId, "previousStatus", "DELIVERED", "newStatus", "RETURNED")
         );
 
-        return buildOrderResponse(order);
+        return rr;
+    }
+
+    public OrderResponse getTracking(String orderId, Authentication auth) {
+        return getOrderById(orderId, auth);
     }
 }

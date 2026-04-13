@@ -5,12 +5,22 @@ import java.util.Map;
 import java.util.Set;
 
 public enum OrderStatus {
-    PENDING,
-    PROCESSING,
-    SHIPPED,
-    DELIVERED,
-    RETURNED,
-    CANCELLED;
+    PENDING("Beklemede"),
+    PROCESSING("Hazırlanıyor"),
+    SHIPPED("Kargoya Verildi"),
+    DELIVERED("Teslim Edildi"),
+    RETURNED("İade Edildi"),
+    CANCELLED("İptal Edildi");
+
+    private final String trLabel;
+
+    OrderStatus(String trLabel) {
+        this.trLabel = trLabel;
+    }
+
+    public String getTrLabel() {
+        return trLabel;
+    }
 
     private static final Map<OrderStatus, Set<OrderStatus>> TRANSITIONS = Map.of(
             PENDING, EnumSet.of(PROCESSING, CANCELLED),

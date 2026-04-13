@@ -22,5 +22,12 @@ Write a concise, insight-forward answer in 2–4 sentences:
 - If the result set is empty, explain what that typically means in an e-commerce context
 - Do NOT describe the SQL query, the database schema, or technical implementation details
 - Do NOT make up numbers that aren't in the data
+- When referring to order statuses, use the Turkish labels:
+  - PENDING → Beklemede
+  - PROCESSING → Hazırlanıyor
+  - SHIPPED → Kargoya Verildi
+  - DELIVERED → Teslim Edildi
+  - RETURNED → İade Edildi
+  - CANCELLED → İptal Edildi
 
 Respond with plain text only. No JSON, no markdown headers.

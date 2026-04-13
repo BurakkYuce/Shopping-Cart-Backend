@@ -1,13 +1,17 @@
 package com.datapulse.controller;
 
 import com.datapulse.dto.request.CreateOrderRequest;
+import com.datapulse.service.OrderExportService;
 import com.datapulse.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +23,7 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderExportService orderExportService;
 
     @GetMapping
     public ResponseEntity<?> getOrders(
@@ -35,6 +40,7 @@ public class OrderController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('INDIVIDUAL','ADMIN')")
     public ResponseEntity<?> createOrder(
             @Valid @RequestBody CreateOrderRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
@@ -52,12 +58,44 @@ public class OrderController {
     }
 
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<?> cancelOrder(@PathVariable String id, Authentication auth) {
-        return ResponseEntity.ok(orderService.cancelOrder(id, auth));
+    public ResponseEntity<?> cancelOrder(
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, String> body,
+            Authentication auth) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(orderService.cancelOrder(id, reason, auth));
     }
 
-    @PostMapping("/{id}/return")
-    public ResponseEntity<?> returnOrder(@PathVariable String id, Authentication auth) {
-        return ResponseEntity.ok(orderService.returnOrder(id, auth));
+    @PostMapping("/{id}/return-requests")
+    public ResponseEntity<?> createReturnRequest(
+            @PathVariable String id,
+            @RequestBody Map<String, String> body,
+            Authentication auth) {
+        String reason = body != null ? body.get("reason") : "No reason provided";
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(orderService.createReturnRequest(id, reason, auth));
+    }
+
+    @GetMapping("/{id}/tracking")
+    public ResponseEntity<?> getTracking(@PathVariable String id, Authentication auth) {
+        return ResponseEntity.ok(orderService.getTracking(id, auth));
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportOrders(
+            @RequestParam(defaultValue = "csv") String format,
+            Authentication auth) {
+        if ("pdf".equalsIgnoreCase(format)) {
+            byte[] pdf = orderExportService.exportPdf(auth);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.pdf")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        }
+        byte[] csv = orderExportService.exportCsv(auth);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=orders.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(csv);
     }
 }
