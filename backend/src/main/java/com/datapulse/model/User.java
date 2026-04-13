@@ -1,5 +1,6 @@
 package com.datapulse.model;
 
+import com.datapulse.model.enums.AccountStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -26,4 +27,17 @@ public class User {
     private RoleType roleType;
 
     private String gender;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false, length = 20)
+    private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "email_verification_token", length = 64)
+    private String emailVerificationToken;
+
+    @Column(name = "email_verification_expires_at")
+    private java.time.LocalDateTime emailVerificationExpiresAt;
 }

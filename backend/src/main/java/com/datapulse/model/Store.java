@@ -1,5 +1,6 @@
 package com.datapulse.model;
 
+import com.datapulse.model.enums.StoreStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -31,7 +32,9 @@ public class Store {
     @Column(nullable = false)
     private String name;
 
-    private String status;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private StoreStatus status = StoreStatus.PENDING_APPROVAL;
 
     @Column(columnDefinition = "TEXT")
     private String description;

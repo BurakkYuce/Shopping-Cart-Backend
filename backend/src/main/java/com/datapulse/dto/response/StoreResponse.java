@@ -20,7 +20,7 @@ public class StoreResponse {
         r.id = store.getId();
         r.ownerId = store.getOwnerId();
         r.name = store.getName();
-        r.status = store.getStatus();
+        r.status = store.getStatus() != null ? store.getStatus().name() : null;
         r.description = store.getDescription();
         r.address = store.getAddress();
         r.city = store.getCity();

@@ -27,7 +27,12 @@ class JwtUtilTest {
         ReflectionTestUtils.setField(jwtUtil, "expiration", 86400000L);
         ReflectionTestUtils.setField(jwtUtil, "refreshExpiration", 604800000L);
 
-        User user = new User("user1", "test@example.com", "hashed", RoleType.INDIVIDUAL, "male");
+        User user = new User();
+        user.setId("user1");
+        user.setEmail("test@example.com");
+        user.setPasswordHash("hashed");
+        user.setRoleType(RoleType.INDIVIDUAL);
+        user.setGender("male");
         userDetails = new UserDetailsImpl(user);
     }
 

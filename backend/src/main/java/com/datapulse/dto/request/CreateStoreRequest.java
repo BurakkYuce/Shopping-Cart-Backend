@@ -7,7 +7,6 @@ import lombok.Data;
 public class CreateStoreRequest {
     @NotBlank
     private String name;
-    private String status = "active";
     private String description;
     private String address;
     private String city;

@@ -55,17 +55,30 @@ class AuthServiceTest {
     @Mock
     private LogEventPublisher logEventPublisher;
 
+    @Mock
+    private EmailVerificationTokenService emailVerificationTokenService;
+
+    @Mock
+    private MailService mailService;
+
     @InjectMocks
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(authService, "jwtExpiration", 86400000L);
+        ReflectionTestUtils.setField(authService, "emailVerificationRequired", false);
     }
 
     @Test
     void login_success() {
-        User user = new User("user1", "test@example.com", "hashed-password", RoleType.INDIVIDUAL, "male");
+        User user = new User();
+        user.setId("user1");
+        user.setEmail("test@example.com");
+        user.setPasswordHash("hashed-password");
+        user.setRoleType(RoleType.INDIVIDUAL);
+        user.setGender("male");
+        user.setEmailVerified(true);
 
         LoginRequest request = new LoginRequest();
         request.setEmail("test@example.com");
@@ -110,7 +123,9 @@ class AuthServiceTest {
         request.setGender("female");
 
         when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
         when(passwordEncoder.encode("securepass")).thenReturn("hashed");
+        when(emailVerificationTokenService.generateAndAssign(any(User.class))).thenReturn("test-token");
         when(jwtUtil.generateAccessToken(any(UserDetailsImpl.class))).thenReturn("tok");
         when(jwtUtil.generateRefreshToken(any(UserDetailsImpl.class))).thenReturn("refresh-tok");
 

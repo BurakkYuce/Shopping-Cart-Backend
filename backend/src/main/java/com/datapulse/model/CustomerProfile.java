@@ -46,4 +46,7 @@ public class CustomerProfile {
 
     @Column(name = "satisfaction_level")
     private String satisfactionLevel;
+
+    @Column(name = "discount_applied", length = 10)
+    private String discountApplied;
 }

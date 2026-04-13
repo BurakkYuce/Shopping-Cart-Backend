@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS account_status varchar(20) NOT NULL DEFAULT 'ACTIVE';

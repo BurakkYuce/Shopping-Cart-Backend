@@ -5,8 +5,10 @@ import com.datapulse.dto.response.StoreResponse;
 import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.logging.LogEventPublisher;
+import com.datapulse.logging.LogEventType;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.Store;
+import com.datapulse.model.enums.StoreStatus;
 import com.datapulse.repository.StoreRepository;
 import com.datapulse.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -68,7 +71,7 @@ public class StoreService {
         store.setId(id);
         store.setOwnerId(currentUser.getId());
         store.setName(request.getName());
-        store.setStatus(request.getStatus() != null ? request.getStatus() : "active");
+        store.setStatus(StoreStatus.PENDING_APPROVAL);
         store.setDescription(request.getDescription());
         store.setAddress(request.getAddress());
         store.setCity(request.getCity());
@@ -95,9 +98,6 @@ public class StoreService {
         if (request.getName() != null) {
             store.setName(request.getName());
         }
-        if (request.getStatus() != null) {
-            store.setStatus(request.getStatus());
-        }
         if (request.getDescription() != null) {
             store.setDescription(request.getDescription());
         }
@@ -116,6 +116,34 @@ public class StoreService {
 
         storeRepository.save(store);
         return StoreResponse.from(store);
+    }
+
+    public StoreResponse updateStatus(String storeId, StoreStatus newStatus, String actingAdminId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("Store", storeId));
+        StoreStatus previous = store.getStatus();
+        store.setStatus(newStatus);
+        storeRepository.save(store);
+
+        logEventPublisher.publish(
+                LogEventType.STORE_STATUS_CHANGED,
+                actingAdminId,
+                "ADMIN",
+                Map.of(
+                        "store_id", storeId,
+                        "previous_status", previous != null ? previous.name() : "null",
+                        "new_status", newStatus.name()));
+
+        return StoreResponse.from(store);
+    }
+
+    public void requireActive(String storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new EntityNotFoundException("Store", storeId));
+        if (store.getStatus() != StoreStatus.ACTIVE) {
+            throw new UnauthorizedAccessException(
+                    "Store is " + store.getStatus().name() + " — operation not permitted");
+        }
     }
 
     public void deleteStore(String id, Authentication auth) {

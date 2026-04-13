@@ -63,7 +63,11 @@ class AnalyticsServiceTest {
     private AnalyticsService analyticsService;
 
     private Authentication buildAdminAuth() {
-        User user = new User("admin1", "admin@example.com", "hashed", RoleType.ADMIN, null);
+        User user = new User();
+        user.setId("admin1");
+        user.setEmail("admin@example.com");
+        user.setPasswordHash("hashed");
+        user.setRoleType(RoleType.ADMIN);
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
         Authentication auth = mock(Authentication.class);
         when(auth.getPrincipal()).thenReturn(userDetails);
@@ -71,7 +75,12 @@ class AnalyticsServiceTest {
     }
 
     private Authentication buildIndividualAuth() {
-        User user = new User("user1", "user@example.com", "hashed", RoleType.INDIVIDUAL, "female");
+        User user = new User();
+        user.setId("user1");
+        user.setEmail("user@example.com");
+        user.setPasswordHash("hashed");
+        user.setRoleType(RoleType.INDIVIDUAL);
+        user.setGender("female");
         UserDetailsImpl userDetails = new UserDetailsImpl(user);
         Authentication auth = mock(Authentication.class);
         when(auth.getPrincipal()).thenReturn(userDetails);
@@ -110,8 +119,17 @@ class AnalyticsServiceTest {
     void getCustomerAnalytics_admin_returnsData() {
         Authentication auth = buildAdminAuth();
 
-        CustomerProfile profile1 = new CustomerProfile("p1", "user1", null, 30, "Istanbul", "Gold", 500.0, 5, 4.5, "High");
-        CustomerProfile profile2 = new CustomerProfile("p2", "user2", null, 40, "Istanbul", "Gold", 500.0, 10, 3.8, "Medium");
+        CustomerProfile profile1 = new CustomerProfile();
+        profile1.setId("p1"); profile1.setUserId("user1"); profile1.setAge(30);
+        profile1.setCity("Istanbul"); profile1.setMembershipType("Gold");
+        profile1.setTotalSpend(500.0); profile1.setItemsPurchased(5);
+        profile1.setAverageRating(4.5); profile1.setSatisfactionLevel("High");
+
+        CustomerProfile profile2 = new CustomerProfile();
+        profile2.setId("p2"); profile2.setUserId("user2"); profile2.setAge(40);
+        profile2.setCity("Istanbul"); profile2.setMembershipType("Gold");
+        profile2.setTotalSpend(500.0); profile2.setItemsPurchased(10);
+        profile2.setAverageRating(3.8); profile2.setSatisfactionLevel("Medium");
 
         when(customerProfileRepository.findAll()).thenReturn(List.of(profile1, profile2));
 

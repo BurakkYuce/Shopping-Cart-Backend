@@ -3,6 +3,7 @@ package com.datapulse.config;
 import com.datapulse.logging.LogEventPublisher;
 import com.datapulse.logging.LogEventType;
 import com.datapulse.model.*;
+import com.datapulse.model.enums.StoreStatus;
 import com.datapulse.repository.*;
 import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvToBeanBuilder;
@@ -227,7 +228,7 @@ public class DataLoader implements CommandLineRunner {
             s.setId(r.id);
             s.setOwnerId(r.ownerId);
             s.setName(r.name);
-            s.setStatus(r.status);
+            s.setStatus(parseStoreStatus(r.status));
             s.setDescription(r.description);
             s.setAddress(r.address);
             s.setCity(r.city);
@@ -387,6 +388,11 @@ public class DataLoader implements CommandLineRunner {
     private Double parseDoubleSafe(String s) {
         if (isBlank(s)) return null;
         try { return Double.parseDouble(s.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    private StoreStatus parseStoreStatus(String s) {
+        if (isBlank(s)) return StoreStatus.ACTIVE;
+        try { return StoreStatus.valueOf(s.trim().toUpperCase()); } catch (IllegalArgumentException e) { return StoreStatus.ACTIVE; }
     }
 
     private LocalDateTime parseDateTime(String s) {
