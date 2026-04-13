@@ -169,7 +169,7 @@ async def _handle_visual_search(image_file, user_text: str):
     the image and text embeddings are blended (70 % image / 30 % text) so
     the text acts as a refinement hint rather than overriding visual similarity.
     """
-    from visual_search.searcher import search_by_image_bytes, search_by_image_and_text
+    from visual_search.searcher import search_by_image_bytes, search_by_image_and_text, InvalidImageError
 
     text_hint = (user_text or "").strip()
 
@@ -186,13 +186,17 @@ async def _handle_visual_search(image_file, user_text: str):
             await cl.Message("Could not read the uploaded image. Please try again.").send()
             return
 
-        if text_hint:
-            results = search_by_image_and_text(image_bytes, text_hint, top_k=8)
-        else:
-            results = search_by_image_bytes(image_bytes, top_k=8)
+        try:
+            if text_hint:
+                results = search_by_image_and_text(image_bytes, text_hint, top_k=8)
+            else:
+                results = search_by_image_bytes(image_bytes, top_k=8)
+        except InvalidImageError as e:
+            await cl.Message(f"Invalid image: {e}").send()
+            return
 
     if not results:
-        await cl.Message("No similar products found. Make sure products with images are loaded.").send()
+        await cl.Message("No similar products found for this image.").send()
         return
 
     # Build summary text

@@ -2,17 +2,29 @@
 Visual similarity search using CLIP embeddings stored in pgvector.
 """
 import io
+import logging
 import os
 
+import numpy as np
 import requests
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from sentence_transformers import SentenceTransformer
 from sqlalchemy import text
 
 from db.engine import get_engine
 
+logger = logging.getLogger(__name__)
+
 _model: SentenceTransformer | None = None
 IMG_TIMEOUT = 10
+MIN_SIMILARITY = 0.15
+MIN_IMAGE_BYTES = 100
+MAX_IMAGE_BYTES = 20 * 1024 * 1024  # 20 MB
+
+
+class InvalidImageError(ValueError):
+    """Raised when the uploaded image cannot be processed."""
+    pass
 
 
 def _get_model() -> SentenceTransformer:
@@ -22,8 +34,31 @@ def _get_model() -> SentenceTransformer:
     return _model
 
 
+def _validate_image_bytes(image_bytes: bytes) -> None:
+    """Check image bytes before PIL processing."""
+    if not image_bytes or len(image_bytes) < MIN_IMAGE_BYTES:
+        raise InvalidImageError("Image is empty or too small to be valid.")
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        raise InvalidImageError(f"Image exceeds {MAX_IMAGE_BYTES // (1024*1024)} MB limit.")
+
+
+def _check_entropy(img: Image.Image) -> None:
+    """Reject blank / single-color images via pixel variance."""
+    small = img.resize((64, 64))
+    arr = np.array(small, dtype=np.float32)
+    if arr.std() < 2.0:
+        raise InvalidImageError("Image appears blank or single-color.")
+
+
 def embed_image_bytes(image_bytes: bytes) -> list[float]:
-    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    _validate_image_bytes(image_bytes)
+    try:
+        img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except UnidentifiedImageError:
+        raise InvalidImageError("Unrecognized image format.")
+    except Exception as e:
+        raise InvalidImageError(f"Failed to open image: {e}")
+    _check_entropy(img)
     return _get_model().encode(img).tolist()
 
 
@@ -49,7 +84,7 @@ def search_by_embedding(embedding: list[float], top_k: int = 8) -> list[dict]:
             LIMIT :k
         """), {"vec": vec_str, "k": top_k}).fetchall()
 
-    return [
+    results = [
         {
             "id": r[0],
             "name": r[1],
@@ -63,6 +98,8 @@ def search_by_embedding(embedding: list[float], top_k: int = 8) -> list[dict]:
         }
         for r in rows
     ]
+    # Filter out results below minimum similarity threshold
+    return [r for r in results if r["similarity"] >= MIN_SIMILARITY]
 
 
 def blend_embeddings(

@@ -16,7 +16,10 @@ from db.schema_context import get_schema_context
 from graph.graph_builder import get_graph
 from graph.state import AgentState
 from rbac.sql_filter import get_sql_filter
-from visual_search.searcher import search_by_image_bytes, search_by_image_and_text, search_by_text, _get_model
+from visual_search.searcher import (
+    search_by_image_bytes, search_by_image_and_text, search_by_text,
+    _get_model, InvalidImageError,
+)
 
 app = FastAPI(title="E-Commerce Chatbot API", version="1.0.0")
 
@@ -68,14 +71,20 @@ async def visual_search(
     """CLIP-based visual product search. Accepts image upload + optional text hint."""
     if image is not None:
         image_bytes = await image.read()
-        if hint.strip():
-            results = search_by_image_and_text(image_bytes, hint.strip(), top_k=top_k)
-        else:
-            results = search_by_image_bytes(image_bytes, top_k=top_k)
+        try:
+            if hint.strip():
+                results = search_by_image_and_text(image_bytes, hint.strip(), top_k=top_k)
+            else:
+                results = search_by_image_bytes(image_bytes, top_k=top_k)
+        except InvalidImageError as e:
+            raise HTTPException(status_code=422, detail=str(e))
     elif hint.strip():
         results = search_by_text(hint.strip(), top_k=top_k)
     else:
         raise HTTPException(status_code=400, detail="Provide an image or a text hint.")
+
+    if not results:
+        return {"results": [], "message": "No similar products found."}
     return {"results": results}
 
 
