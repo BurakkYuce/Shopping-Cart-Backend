@@ -7,7 +7,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from graph.state import AgentState, ExecutionResult
-from llm.provider import get_llm
+from llm.provider import get_fast_llm
 
 _PROMPT_TEMPLATE = (Path(__file__).parent.parent.parent / "prompts" / "analysis_system.md").read_text()
 _LLM = None
@@ -16,7 +16,7 @@ _LLM = None
 def _get_llm():
     global _LLM
     if _LLM is None:
-        _LLM = get_llm(temperature=0.3)
+        _LLM = get_fast_llm(temperature=0.3)
     return _LLM
 
 

@@ -5,9 +5,15 @@ Generate a single, valid SELECT query that answers the user's question.
 
 {schema_context}
 
-## Role-Based Access Filter
+## Current User
 
-The user's role is: **{role}**
+- Role: **{role}**
+- User ID: `{user_id}`
+
+When the user asks about "my cart", "my bag", "my wishlist", "my favorites", or "my orders",
+filter by `user_id = '{user_id}'`.
+
+## Role-Based Access Filter
 
 {role_filter_cte_block}
 

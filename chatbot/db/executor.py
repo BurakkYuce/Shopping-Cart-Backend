@@ -20,6 +20,11 @@ _FORBIDDEN_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Credentials must never leave the DB via the chatbot path — block any reference to the column
+# regardless of role. Matches the bare name and common obfuscations (p_a_s_s_w_o_r_d_h_a_s_h,
+# password\u005fhash, etc.) by stripping non-word characters before the check.
+_PASSWORD_PATTERN = re.compile(r"password[_\s]*hash", re.IGNORECASE)
+
 
 class ExecutionResult(TypedDict):
     columns: list[str]
@@ -37,6 +42,12 @@ def execute_query(sql: str) -> ExecutionResult:
 
     if not re.match(r"^\s*(with|select)\b", stripped, re.IGNORECASE):
         raise ValueError(f"Query must start with SELECT or WITH: {stripped[:80]}")
+
+    # Strip everything but letters so obfuscations like p_a_s_s_w_o_r_d_h_a_s_h or
+    # p.a.s.s.w.o.r.d.h.a.s.h collapse to plain "passwordhash" before we match.
+    letters_only = re.sub(r"[^a-zA-Z]", "", stripped)
+    if _PASSWORD_PATTERN.search(stripped) or re.search(r"passwordhash", letters_only, re.IGNORECASE):
+        raise ValueError("Access to credential columns is not permitted.")
 
     try:
         with get_engine().connect() as conn:

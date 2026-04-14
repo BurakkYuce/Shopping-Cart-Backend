@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from db.executor import execute_query
 from graph.state import AgentState
 from llm.provider import get_llm
+from rbac.sql_filter import get_sql_filter
 
 _PROMPT_TEMPLATE = (Path(__file__).parent.parent.parent / "prompts" / "sql_generator_system.md").read_text()
 _LLM = None
@@ -66,6 +67,7 @@ def sql_generator_node(state: AgentState) -> AgentState:
         prompt = _PROMPT_TEMPLATE.format(
             schema_context=state["schema_context"],
             role=state["user_context"]["role"],
+            user_id=state["user_context"].get("user_id", ""),
             role_filter_cte_block=_build_cte_block_for_prompt(cte),
             role_usage_hint=state.get("role_usage_hint", ""),
             message_history=_format_history(state.get("message_history", [])),
@@ -80,8 +82,20 @@ def sql_generator_node(state: AgentState) -> AgentState:
         response = _get_llm().invoke(messages)
         sql = _strip_sql_fences(response.content)
 
+        # Hard RBAC fallback: if the LLM dropped the CTE block for a scoped role,
+        # prepend it before execution so cross-role table access is structurally blocked.
+        sql = get_sql_filter().inject_cte_if_missing(
+            sql,
+            state["user_context"]["role"],
+            state["user_context"].get("user_id", ""),
+        )
+
     # Execute
     try:
+        # Structural RBAC: reject queries that reach past the CTE aliases.
+        # The LLM sometimes defines _allowed_* CTEs correctly but then the main
+        # SELECT uses the base tables — silently leaking cross-role data.
+        sql = get_sql_filter().enforce_scope(sql, state["user_context"]["role"])
         result = execute_query(sql)
         return {
             **state,

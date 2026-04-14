@@ -22,7 +22,7 @@ from graph.nodes.sql_generator import sql_generator_node
 from graph.nodes.visualization import visualization_node
 from graph.state import AgentState
 
-MAX_RETRIES = int(os.environ.get("SQL_RETRY_LIMIT", 3))
+MAX_RETRIES = int(os.environ.get("SQL_RETRY_LIMIT", 1))
 
 
 # ── Conditional edge functions ──────────────────────────────────────────────

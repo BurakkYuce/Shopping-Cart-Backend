@@ -6,9 +6,12 @@ Do NOT generate SQL. Do NOT answer the question. Only classify.
 ## Intent categories
 
 - **sql_query**: The message asks for data, metrics, comparisons, trends, or counts related to
-  orders, products, customers, revenue, shipments, reviews, stores, or categories.
+  orders, products, customers, revenue, shipments, reviews, stores, categories,
+  **brands**, **coupons (promo codes)**, **cart items (bag)**, or **wishlist (favorites)**.
   Examples: "How much revenue did I make last month?", "What are my top 5 products?",
-  "Show me orders with status pending", "Which cities have the most customers?"
+  "Show me orders with status pending", "Which cities have the most customers?",
+  "What's in my bag?", "Show me my cart items", "What are my saved products?",
+  "Which brands do you carry?", "Show me active coupons", "Most reviewed product?"
 
 - **greeting**: Hello, hi, what can you do, help, what are your capabilities.
 

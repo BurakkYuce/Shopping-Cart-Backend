@@ -8,6 +8,7 @@ ADMIN:      no restriction — empty CTE string
 CORPORATE:  scoped to stores owned by user_id
 INDIVIDUAL: scoped to user's own orders, reviews, profile
 """
+import re
 
 CORPORATE_CTE = """WITH _allowed_stores AS (
     SELECT id AS store_id FROM stores WHERE owner_id = '{user_id}'
@@ -84,6 +85,74 @@ class SqlFilter:
         # Replace leading SELECT/WITH
         stripped = sql.strip()
         return cte + "\n" + stripped
+
+    # Per-role forbidden base tables in the main SELECT body. Every entry here
+    # has an `_allowed_` alias that the LLM should use instead. `users` is
+    # added universally because no non-admin role should read it directly,
+    # even for joins (it holds password_hash). Tables not listed (brands,
+    # categories, cart_items, wishlist_items, coupons, etc.) are public
+    # catalog or self-scoped by user_id — safe to reference as base tables.
+    _FORBIDDEN_PER_ROLE = {
+        "INDIVIDUAL": ["orders", "reviews", "customer_profiles", "users"],
+        "CORPORATE": ["orders", "products", "stores", "users"],
+    }
+
+    def enforce_scope(self, sql: str, role: str) -> str:
+        """Reject queries that reach past the CTE aliases for scoped roles.
+
+        The LLM sometimes defines the CTE correctly but then writes the main
+        SELECT against a base table (e.g. `FROM orders o` instead of
+        `FROM _allowed_orders o`). That silently returns the whole table —
+        a real cross-role leak, not a theoretical one. This pass walks
+        paren-matched CTE headers, then scans the body for any base-table
+        reference, raising a ValueError if one is found.
+        """
+        if role == "ADMIN":
+            return sql
+        forbidden = self._FORBIDDEN_PER_ROLE.get(role, [])
+        if not forbidden:
+            return sql
+        body = self._split_body(sql)
+        for tbl in forbidden:
+            if re.search(rf"\b(?:FROM|JOIN)\s+{tbl}\b", body, re.IGNORECASE):
+                alias_suffix = "profile" if tbl == "customer_profiles" else tbl
+                raise ValueError(
+                    f"Role '{role}' cannot read base table '{tbl}'. "
+                    f"Use _allowed_{alias_suffix}."
+                )
+        return sql
+
+    @staticmethod
+    def _split_body(sql: str) -> str:
+        """Return the portion of `sql` after the leading WITH-CTE block.
+
+        Uses paren matching so nested SELECTs inside CTE bodies don't confuse us.
+        If there's no CTE, the whole query is the body.
+        """
+        m = re.match(r"^\s*WITH\s", sql, re.IGNORECASE)
+        if not m:
+            return sql
+        i = m.end()
+        depth = 0
+        n = len(sql)
+        while i < n:
+            c = sql[i]
+            if c == "(":
+                depth += 1
+            elif c == ")":
+                depth -= 1
+                if depth == 0:
+                    rest = sql[i + 1:].lstrip()
+                    # Another CTE in the list?
+                    if rest.startswith(","):
+                        # Skip past the comma and keep walking
+                        comma_idx = sql.index(",", i + 1)
+                        i = comma_idx + 1
+                        continue
+                    # Otherwise we're at the body
+                    return sql[i + 1:]
+            i += 1
+        return ""
 
 
 _filter = SqlFilter()

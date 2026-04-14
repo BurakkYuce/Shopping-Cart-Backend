@@ -9,7 +9,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from graph.state import AgentState
-from llm.provider import get_llm
+from llm.provider import get_fast_llm
 
 _PROMPT_PATH = Path(__file__).parent.parent.parent / "prompts" / "guardrails_system.md"
 _SYSTEM_PROMPT = _PROMPT_PATH.read_text()
@@ -19,7 +19,7 @@ _LLM = None
 def _get_llm():
     global _LLM
     if _LLM is None:
-        _LLM = get_llm(temperature=0.0)
+        _LLM = get_fast_llm(temperature=0.0)
     return _LLM
 
 

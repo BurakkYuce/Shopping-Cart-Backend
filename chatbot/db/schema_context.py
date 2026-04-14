@@ -20,8 +20,13 @@ TABLE: customer_profiles
 TABLE: categories
   Columns: id (VARCHAR PK), name (VARCHAR), parent_id (FK → categories.id, nullable — null means top-level)
 
+TABLE: brands
+  Columns: id (VARCHAR PK), display_name (VARCHAR), slug (VARCHAR UNIQUE)
+  Note: Normalised brand master data. JOIN via products.brand_id.
+
 TABLE: products
   Columns: id (VARCHAR PK), store_id (FK → stores.id), category_id (FK → categories.id),
+           brand_id (FK → brands.id, nullable), brand (VARCHAR — legacy text, prefer JOIN brands),
            sku (VARCHAR), name (VARCHAR), unit_price (DECIMAL), description (TEXT)
 
 TABLE: orders
@@ -40,11 +45,28 @@ TABLE: shipments
   Note: MULTIPLE shipments can exist per order. Always aggregate (MAX, COUNT, etc.) or use a subquery
         to avoid row duplication when joining shipments to orders.
 
+TABLE: cart_items
+  Columns: id (VARCHAR PK), user_id (FK → users.id), product_id (FK → products.id), quantity (INT)
+  Note: Active shopping cart. Each row is one product in a user's bag. JOIN products for names/prices.
+  UNIQUE constraint: (user_id, product_id) — one row per product per user.
+
+TABLE: wishlist_items
+  Columns: id (VARCHAR PK), user_id (FK → users.id), product_id (FK → products.id)
+  Note: User's saved/favorited products. JOIN products for details.
+
 TABLE: reviews
   Columns: id (VARCHAR PK), user_id (FK → users.id), product_id (FK → products.id),
            star_rating (INT 1-5), helpful_votes (INT), total_votes (INT),
            review_headline (VARCHAR), review_text (TEXT), sentiment (VARCHAR: positive|neutral|negative),
-           verified_purchase (VARCHAR: Y|N), review_date (DATE)
+           verified_purchase (VARCHAR: Y|N), review_date (DATE),
+           seller_response (VARCHAR, nullable), seller_response_date (TIMESTAMP, nullable)
+
+TABLE: coupons
+  Columns: id (VARCHAR PK), code (VARCHAR UNIQUE), type (VARCHAR: PERCENTAGE|FIXED_AMOUNT),
+           value (DECIMAL), description (VARCHAR), min_order_amount (DECIMAL),
+           max_discount (DECIMAL, nullable), max_uses (INT, nullable), current_uses (INT),
+           valid_from (TIMESTAMP), valid_to (TIMESTAMP), active (BOOLEAN)
+  Note: Platform-wide discount coupons created by admins.
 
 COMMON JOIN PATTERNS:
   - Revenue by product: orders o → order_items oi ON oi.order_id = o.id → products p ON p.id = oi.product_id
@@ -52,6 +74,10 @@ COMMON JOIN PATTERNS:
   - Customer spend: users u → customer_profiles cp ON cp.user_id = u.id
   - Shipping analysis: orders o → shipments s ON s.order_id = o.id (use DISTINCT or aggregate due to multiple shipments)
   - Top products by quantity: order_items oi JOIN products p ON p.id = oi.product_id GROUP BY p.name ORDER BY SUM(oi.quantity) DESC
+  - User's cart: cart_items ci JOIN products p ON p.id = ci.product_id JOIN stores s ON s.id = p.store_id WHERE ci.user_id = '<userId>'
+  - User's wishlist: wishlist_items wi JOIN products p ON p.id = wi.product_id WHERE wi.user_id = '<userId>'
+  - Products by brand: products p JOIN brands b ON b.id = p.brand_id WHERE b.display_name ILIKE '%Nike%'
+  - Active coupons: SELECT code, type, value, description FROM coupons WHERE active = TRUE AND (valid_to IS NULL OR valid_to > NOW())
 
 IMPORTANT — HUMAN-READABLE NAMES:
   - NEVER use raw IDs (product_id, category_id, store_id) as display columns in query results.
