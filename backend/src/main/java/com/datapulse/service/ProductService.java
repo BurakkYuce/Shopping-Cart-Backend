@@ -7,11 +7,16 @@ import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.logging.LogEventPublisher;
 import com.datapulse.logging.LogEventType;
 import com.datapulse.model.Product;
+import com.datapulse.model.Review;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.Store;
+import com.datapulse.repository.CartItemRepository;
+import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.ProductAttributeRepository;
 import com.datapulse.repository.ProductRepository;
+import com.datapulse.repository.ReviewRepository;
 import com.datapulse.repository.StoreRepository;
+import com.datapulse.repository.WishlistItemRepository;
 import com.datapulse.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -31,15 +36,43 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final ProductAttributeRepository productAttributeRepository;
     private final StoreRepository storeRepository;
+    private final CartItemRepository cartItemRepository;
+    private final WishlistItemRepository wishlistItemRepository;
+    private final ReviewRepository reviewRepository;
+    private final OrderItemRepository orderItemRepository;
     private final LogEventPublisher logEventPublisher;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
     }
 
+    /** Batch-enrich a page of products with review aggregates computed from actual review rows.
+     *  Products with zero reviews end up with rating=null so the UI can show "no reviews yet". */
+    private Page<ProductResponse> enrichPageWithReviews(Page<Product> page) {
+        List<String> productIds = page.getContent().stream().map(Product::getId).toList();
+        Map<String, List<Review>> reviewsByProduct = productIds.isEmpty()
+                ? Map.of()
+                : reviewRepository.findByProductIdIn(productIds).stream()
+                        .collect(java.util.stream.Collectors.groupingBy(Review::getProductId));
+        return page.map(p -> {
+            List<Review> revs = reviewsByProduct.getOrDefault(p.getId(), List.of());
+            return ProductResponse.from(p).withReviewAggregates(averageStarRating(revs), revs.size());
+        });
+    }
+
+    private Double averageStarRating(List<Review> reviews) {
+        if (reviews == null || reviews.isEmpty()) return null;
+        return reviews.stream()
+                .map(Review::getStarRating)
+                .filter(java.util.Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0.0);
+    }
+
     public Page<ProductResponse> getProducts(Authentication auth, Pageable pageable) {
         if (auth == null || !auth.isAuthenticated()) {
-            return productRepository.findAll(pageable).map(ProductResponse::from);
+            return enrichPageWithReviews(productRepository.findAll(pageable));
         }
 
         UserDetailsImpl currentUser = getCurrentUser(auth);
@@ -48,14 +81,15 @@ public class ProductService {
         if (role == RoleType.CORPORATE) {
             List<String> storeIds = storeRepository.findByOwnerId(currentUser.getId())
                     .stream().map(Store::getId).toList();
-            return productRepository.findByStoreIdIn(storeIds, pageable).map(ProductResponse::from);
+            return enrichPageWithReviews(productRepository.findByStoreIdIn(storeIds, pageable));
         }
 
-        return productRepository.findAll(pageable).map(ProductResponse::from);
+        return enrichPageWithReviews(productRepository.findAll(pageable));
     }
 
-    public Page<ProductResponse> searchProducts(String query, String categoryId, String brand, Double minPrice, Double maxPrice, Pageable pageable) {
-        return productRepository.search(query, categoryId, brand, minPrice, maxPrice, pageable).map(ProductResponse::from);
+    public Page<ProductResponse> searchProducts(String query, String categoryId, String brand, Double minPrice, Double maxPrice, String storeId, Pageable pageable) {
+        return enrichPageWithReviews(
+                productRepository.search(query, categoryId, brand, minPrice, maxPrice, storeId, pageable));
     }
 
     public ProductResponse getProductById(String id) {
@@ -70,7 +104,9 @@ public class ProductService {
         );
 
         var attrs = productAttributeRepository.findByProductId(id);
-        return ProductResponse.from(product, attrs);
+        var reviews = reviewRepository.findByProductId(id);
+        return ProductResponse.from(product, attrs)
+                .withReviewAggregates(averageStarRating(reviews), reviews.size());
     }
 
     public ProductResponse createProduct(CreateProductRequest req, Authentication auth) {
@@ -138,6 +174,7 @@ public class ProductService {
         return ProductResponse.from(product);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteProduct(String id, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
@@ -154,6 +191,13 @@ public class ProductService {
         } else if (role != RoleType.ADMIN) {
             throw new UnauthorizedAccessException("Access denied: insufficient permissions");
         }
+
+        // Clean up FK references before deleting product
+        cartItemRepository.deleteByProductId(id);
+        wishlistItemRepository.deleteByProductId(id);
+        reviewRepository.deleteByProductId(id);
+        orderItemRepository.deleteByProductId(id);
+        productAttributeRepository.deleteByProductId(id);
 
         productRepository.delete(product);
     }

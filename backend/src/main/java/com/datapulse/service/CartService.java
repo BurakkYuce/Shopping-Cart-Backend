@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -78,7 +79,7 @@ public class CartService {
         cartItemRepository.deleteByUserId(userId);
     }
 
-    public CreateOrderRequest toOrderRequest(String storeId, String paymentMethod, Authentication auth) {
+    public List<CreateOrderRequest> toOrderRequests(String paymentMethod, Authentication auth) {
         String userId = getCurrentUser(auth).getId();
         List<CartItem> items = cartItemRepository.findByUserId(userId);
 
@@ -86,22 +87,67 @@ public class CartService {
             throw new EntityNotFoundException("Cart is empty", userId);
         }
 
-        CreateOrderRequest req = new CreateOrderRequest();
-        req.setStoreId(storeId);
-        req.setPaymentMethod(paymentMethod);
-        req.setItems(items.stream().map(ci -> {
-            CreateOrderRequest.OrderItemRequest oir = new CreateOrderRequest.OrderItemRequest();
-            oir.setProductId(ci.getProductId());
-            oir.setQuantity(ci.getQuantity());
-            return oir;
-        }).toList());
+        List<String> productIds = items.stream().map(CartItem::getProductId).toList();
+        Map<String, Product> productMap = productRepository.findAllByIdWithStore(productIds)
+                .stream().collect(Collectors.toMap(Product::getId, p -> p));
 
-        return req;
+        // Group cart items by storeId
+        Map<String, List<CartItem>> byStore = items.stream()
+                .collect(Collectors.groupingBy(ci -> {
+                    Product p = productMap.get(ci.getProductId());
+                    return p != null ? p.getStoreId() : "unknown";
+                }));
+
+        return byStore.entrySet().stream().map(entry -> {
+            CreateOrderRequest req = new CreateOrderRequest();
+            req.setStoreId(entry.getKey());
+            req.setPaymentMethod(paymentMethod);
+            req.setItems(entry.getValue().stream().map(ci -> {
+                CreateOrderRequest.OrderItemRequest oir = new CreateOrderRequest.OrderItemRequest();
+                oir.setProductId(ci.getProductId());
+                oir.setQuantity(ci.getQuantity());
+                return oir;
+            }).toList());
+            return req;
+        }).toList();
+    }
+
+    public BigDecimal calculateCartSubtotal(Authentication auth) {
+        String userId = getCurrentUser(auth).getId();
+        List<CartItem> items = cartItemRepository.findByUserId(userId);
+        List<String> productIds = items.stream().map(CartItem::getProductId).toList();
+        Map<String, Product> productMap = productIds.isEmpty() ? Map.of() :
+                productRepository.findAllById(productIds)
+                        .stream().collect(Collectors.toMap(Product::getId, p -> p));
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (CartItem ci : items) {
+            Product p = productMap.get(ci.getProductId());
+            if (p != null) {
+                subtotal = subtotal.add(BigDecimal.valueOf(p.getUnitPrice()).multiply(BigDecimal.valueOf(ci.getQuantity())));
+            }
+        }
+        return subtotal;
+    }
+
+    public BigDecimal calculateOrderSubtotal(CreateOrderRequest req) {
+        List<String> productIds = req.getItems().stream()
+                .map(CreateOrderRequest.OrderItemRequest::getProductId).toList();
+        Map<String, Product> productMap = productRepository.findAllById(productIds)
+                .stream().collect(Collectors.toMap(Product::getId, p -> p));
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (CreateOrderRequest.OrderItemRequest item : req.getItems()) {
+            Product p = productMap.get(item.getProductId());
+            if (p != null) {
+                subtotal = subtotal.add(BigDecimal.valueOf(p.getUnitPrice()).multiply(BigDecimal.valueOf(item.getQuantity())));
+            }
+        }
+        return subtotal;
     }
 
     private CartResponse buildCartResponse(List<CartItem> items) {
         List<String> productIds = items.stream().map(CartItem::getProductId).toList();
-        Map<String, Product> productMap = productRepository.findAllById(productIds)
+        Map<String, Product> productMap = productIds.isEmpty() ? Map.of() :
+                productRepository.findAllByIdWithStore(productIds)
                 .stream().collect(Collectors.toMap(Product::getId, p -> p));
 
         CartResponse response = new CartResponse();
@@ -117,6 +163,8 @@ public class CartService {
             r.setUnitPrice(product != null ? product.getUnitPrice() : 0.0);
             r.setQuantity(ci.getQuantity());
             r.setLineTotal(r.getUnitPrice() * ci.getQuantity());
+            r.setStoreId(product != null ? product.getStoreId() : null);
+            r.setStoreName(product != null && product.getStore() != null ? product.getStore().getName() : "Unknown Store");
             return r;
         }).toList();
 

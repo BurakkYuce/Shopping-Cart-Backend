@@ -82,6 +82,12 @@ public class Order {
     @Column(name = "refunded_at")
     private LocalDateTime refundedAt;
 
+    @Column(name = "coupon_code", length = 50)
+    private String couponCode;
+
+    @Column(name = "discount_amount")
+    private Double discountAmount = 0.0;
+
     @Column(length = 3)
     private String currency = "TRY";
 

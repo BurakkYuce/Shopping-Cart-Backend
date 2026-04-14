@@ -7,11 +7,12 @@ import lombok.Data;
 
 @Data
 public class CheckoutRequest {
-    @NotBlank
     private String storeId;
 
     @NotBlank
     private String paymentMethod;
+
+    private String couponCode;
 
     @NotNull(message = "KVKK consent is required")
     @AssertTrue(message = "KVKK consent is required")

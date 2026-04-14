@@ -14,6 +14,7 @@ public interface CartItemRepository extends JpaRepository<CartItem, String> {
     Optional<CartItem> findByUserIdAndProductId(String userId, String productId);
     void deleteByUserId(String userId);
     void deleteByUserIdAndProductId(String userId, String productId);
+    void deleteByProductId(String productId);
 
     @Modifying
     @Query(value = "INSERT INTO cart_items (id, user_id, product_id, quantity) " +

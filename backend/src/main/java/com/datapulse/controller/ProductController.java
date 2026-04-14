@@ -30,19 +30,24 @@ public class ProductController {
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
+            @RequestParam(required = false) String storeId,
             @RequestParam(required = false, defaultValue = "name,asc") String sort) {
-        Sort sortObj = parseSort(sort);
+        boolean hasFilters = q != null || categoryId != null || brand != null || minPrice != null || maxPrice != null || storeId != null;
+        Sort sortObj = parseSort(sort, hasFilters);
         PageRequest pageable = PageRequest.of(page, size, sortObj);
-        if (q != null || categoryId != null || brand != null || minPrice != null || maxPrice != null) {
-            return ResponseEntity.ok(productService.searchProducts(q, categoryId, brand, minPrice, maxPrice, pageable));
+        if (hasFilters) {
+            return ResponseEntity.ok(productService.searchProducts(q, categoryId, brand, minPrice, maxPrice, storeId, pageable));
         }
         return ResponseEntity.ok(productService.getProducts(auth, pageable));
     }
 
-    private Sort parseSort(String sort) {
+    private Sort parseSort(String sort, boolean nativeQuery) {
         try {
             String[] parts = sort.split(",");
             String field = parts[0].trim();
+            if (nativeQuery) {
+                field = field.replaceAll("([a-z])([A-Z])", "$1_$2").toLowerCase();
+            }
             Sort.Direction direction = parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")
                     ? Sort.Direction.DESC : Sort.Direction.ASC;
             return Sort.by(direction, field);

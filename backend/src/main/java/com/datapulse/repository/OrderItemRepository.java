@@ -10,6 +10,7 @@ import java.util.List;
 public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
     List<OrderItem> findByOrderId(String orderId);
     List<OrderItem> findByOrderIdIn(List<String> orderIds);
+    void deleteByProductId(String productId);
 
     @Query(value = """
             SELECT EXISTS (

@@ -10,4 +10,5 @@ public interface ProductAttributeRepository extends JpaRepository<ProductAttribu
     List<ProductAttribute> findByProductId(String productId);
     Optional<ProductAttribute> findByProductIdAndAttrKey(String productId, String attrKey);
     void deleteByProductIdAndAttrKey(String productId, String attrKey);
+    void deleteByProductId(String productId);
 }

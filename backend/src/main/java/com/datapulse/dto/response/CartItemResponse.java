@@ -11,4 +11,6 @@ public class CartItemResponse {
     private Double unitPrice;
     private Integer quantity;
     private Double lineTotal;
+    private String storeId;
+    private String storeName;
 }

@@ -93,6 +93,10 @@ public class OrderService {
     }
 
     public Page<OrderResponse> getOrders(Authentication auth, Pageable pageable) {
+        return getOrders(auth, pageable, null);
+    }
+
+    public Page<OrderResponse> getOrders(Authentication auth, Pageable pageable, String statusFilter) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
@@ -102,13 +106,45 @@ public class OrderService {
         } else if (role == RoleType.CORPORATE) {
             List<String> storeIds = storeRepository.findByOwnerId(currentUser.getId())
                     .stream().map(Store::getId).toList();
-            orderPage = orderRepository.findByStoreIdIn(storeIds, pageable);
+            // Sellers need to see shipping-ready / confirmation-pending orders first so nothing
+            // slips through the cracks. Strip the client-provided sort and use our priority query.
+            Pageable priorityPageable = org.springframework.data.domain.PageRequest.of(
+                    pageable.getPageNumber(), pageable.getPageSize());
+            orderPage = storeIds.isEmpty()
+                    ? Page.empty(priorityPageable)
+                    : orderRepository.findSellerOrdersByPriority(storeIds, priorityPageable);
         } else {
             orderPage = orderRepository.findAll(pageable);
         }
 
-        List<OrderResponse> responses = buildBulkResponses(orderPage.getContent());
-        return new PageImpl<>(responses, pageable, orderPage.getTotalElements());
+        List<Order> filtered = filterByStatus(orderPage.getContent(), statusFilter);
+        List<OrderResponse> responses = buildBulkResponses(filtered);
+        long total = statusFilter == null || statusFilter.isBlank()
+                ? orderPage.getTotalElements()
+                : filtered.size();
+        return new PageImpl<>(responses, orderPage.getPageable(), total);
+    }
+
+    /** Parse status query — accepts a single status ("delivered"), a comma-separated list
+     *  ("pending,processing,shipped"), or the alias "active" meaning in-flight orders. */
+    private List<Order> filterByStatus(List<Order> orders, String statusFilter) {
+        if (statusFilter == null || statusFilter.isBlank()) return orders;
+        java.util.Set<OrderStatus> wanted = new java.util.HashSet<>();
+        for (String raw : statusFilter.split(",")) {
+            String token = raw.trim();
+            if (token.isEmpty()) continue;
+            if ("active".equalsIgnoreCase(token)) {
+                wanted.add(OrderStatus.PENDING);
+                wanted.add(OrderStatus.PROCESSING);
+                wanted.add(OrderStatus.SHIPPED);
+            } else {
+                try {
+                    wanted.add(OrderStatus.fromString(token));
+                } catch (IllegalArgumentException ignored) { /* silently drop unknown values */ }
+            }
+        }
+        if (wanted.isEmpty()) return orders;
+        return orders.stream().filter(o -> wanted.contains(o.getStatus())).toList();
     }
 
     public OrderResponse getOrderById(String id, Authentication auth) {
@@ -175,8 +211,13 @@ public class OrderService {
         }
 
         subtotal = subtotal.setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-        BigDecimal taxAmount = subtotal.multiply(TAX_RATE).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
-        BigDecimal grandTotal = subtotal.add(taxAmount).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal discountAmount = req.getDiscountAmount() != null
+                ? BigDecimal.valueOf(req.getDiscountAmount()).setScale(MONEY_SCALE, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        BigDecimal taxableAmount = subtotal.subtract(discountAmount);
+        if (taxableAmount.compareTo(BigDecimal.ZERO) < 0) taxableAmount = BigDecimal.ZERO;
+        BigDecimal taxAmount = taxableAmount.multiply(TAX_RATE).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+        BigDecimal grandTotal = taxableAmount.add(taxAmount).setScale(MONEY_SCALE, RoundingMode.HALF_UP);
 
         PaymentMethod paymentMethod = PaymentMethod.fromString(req.getPaymentMethod());
         PaymentService.PaymentResult paymentResult = paymentService.charge(
@@ -191,6 +232,8 @@ public class OrderService {
         order.setStoreId(req.getStoreId());
         order.setStatus(OrderStatus.PENDING);
         order.setSubtotal(subtotal.doubleValue());
+        order.setCouponCode(req.getCouponCode());
+        order.setDiscountAmount(discountAmount.doubleValue());
         order.setTaxAmount(taxAmount.doubleValue());
         order.setGrandTotal(grandTotal.doubleValue());
         order.setCreatedAt(LocalDateTime.now());

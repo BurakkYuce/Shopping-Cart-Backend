@@ -15,6 +15,9 @@ public interface ProductRepository extends JpaRepository<Product, String> {
 
     @Query("SELECT p FROM Product p WHERE p.storeId = :storeId AND p.stockQuantity <= p.lowStockThreshold")
     List<Product> findLowStockByStoreId(@Param("storeId") String storeId);
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.store WHERE p.id IN :ids")
+    List<Product> findAllByIdWithStore(@Param("ids") List<String> ids);
     Page<Product> findAll(Pageable pageable);
     Page<Product> findByStoreIdIn(List<String> storeIds, Pageable pageable);
 
@@ -23,13 +26,15 @@ public interface ProductRepository extends JpaRepository<Product, String> {
            "(CAST(:categoryId AS text) IS NULL OR p.category_id = CAST(:categoryId AS text)) AND " +
            "(CAST(:brand AS text) IS NULL OR p.brand ILIKE CAST(:brand AS text)) AND " +
            "(CAST(:minPrice AS double precision) IS NULL OR p.unit_price >= CAST(:minPrice AS double precision)) AND " +
-           "(CAST(:maxPrice AS double precision) IS NULL OR p.unit_price <= CAST(:maxPrice AS double precision))",
+           "(CAST(:maxPrice AS double precision) IS NULL OR p.unit_price <= CAST(:maxPrice AS double precision)) AND " +
+           "(CAST(:storeId AS text) IS NULL OR p.store_id = CAST(:storeId AS text))",
            countQuery = "SELECT count(*) FROM products p WHERE " +
            "(CAST(:query AS text) IS NULL OR p.name ILIKE ('%' || CAST(:query AS text) || '%') OR p.description ILIKE ('%' || CAST(:query AS text) || '%')) AND " +
            "(CAST(:categoryId AS text) IS NULL OR p.category_id = CAST(:categoryId AS text)) AND " +
            "(CAST(:brand AS text) IS NULL OR p.brand ILIKE CAST(:brand AS text)) AND " +
            "(CAST(:minPrice AS double precision) IS NULL OR p.unit_price >= CAST(:minPrice AS double precision)) AND " +
-           "(CAST(:maxPrice AS double precision) IS NULL OR p.unit_price <= CAST(:maxPrice AS double precision))",
+           "(CAST(:maxPrice AS double precision) IS NULL OR p.unit_price <= CAST(:maxPrice AS double precision)) AND " +
+           "(CAST(:storeId AS text) IS NULL OR p.store_id = CAST(:storeId AS text))",
            nativeQuery = true)
     Page<Product> search(
             @Param("query") String query,
@@ -37,5 +42,6 @@ public interface ProductRepository extends JpaRepository<Product, String> {
             @Param("brand") String brand,
             @Param("minPrice") Double minPrice,
             @Param("maxPrice") Double maxPrice,
+            @Param("storeId") String storeId,
             Pageable pageable);
 }

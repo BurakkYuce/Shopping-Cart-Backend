@@ -29,9 +29,10 @@ public class OrderController {
     public ResponseEntity<?> getOrders(
             Authentication auth,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String status) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ResponseEntity.ok(orderService.getOrders(auth, pageable));
+        return ResponseEntity.ok(orderService.getOrders(auth, pageable, status));
     }
 
     @GetMapping("/{id}")

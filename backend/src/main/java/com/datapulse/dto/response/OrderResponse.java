@@ -33,6 +33,8 @@ public class OrderResponse {
     private String customerNotes;
     private LocalDateTime refundedAt;
     private String statusTr;
+    private String couponCode;
+    private Double discountAmount;
     private String currency;
     private Double exchangeRate;
 
@@ -81,6 +83,8 @@ public class OrderResponse {
         r.customerNotes = order.getCustomerNotes();
         r.refundedAt = order.getRefundedAt();
         r.statusTr = order.getStatus() != null ? order.getStatus().getTrLabel() : null;
+        r.couponCode = order.getCouponCode();
+        r.discountAmount = order.getDiscountAmount();
         r.currency = order.getCurrency();
         r.exchangeRate = order.getExchangeRate();
         return r;

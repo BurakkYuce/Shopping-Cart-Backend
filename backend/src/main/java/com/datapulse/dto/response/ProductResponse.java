@@ -22,6 +22,7 @@ public class ProductResponse {
     private String brand;
     private String brandId;
     private Double rating;
+    private Integer reviewCount;
     private Double retailPrice;
     private Map<String, String> attributes;
 
@@ -39,8 +40,17 @@ public class ProductResponse {
         r.brand = product.getBrand();
         r.brandId = product.getBrandId();
         r.rating = product.getRating();
+        r.reviewCount = 0;
         r.retailPrice = product.getRetailPrice();
         return r;
+    }
+
+    /** Apply user-generated review aggregates. If reviewCount is 0, rating is cleared so the
+     *  frontend can render "no reviews yet" rather than a seeded rating. */
+    public ProductResponse withReviewAggregates(Double avgRating, int reviewCount) {
+        this.reviewCount = reviewCount;
+        this.rating = reviewCount > 0 ? avgRating : null;
+        return this;
     }
 
     public static ProductResponse from(Product product, List<ProductAttribute> attrs) {

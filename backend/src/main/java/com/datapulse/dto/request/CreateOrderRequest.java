@@ -16,6 +16,9 @@ public class CreateOrderRequest {
     private String storeId;
     @NotBlank
     private String paymentMethod;
+
+    private String couponCode;
+    private Double discountAmount;
     @NotEmpty
     @Valid
     private List<OrderItemRequest> items;

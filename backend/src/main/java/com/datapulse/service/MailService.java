@@ -44,4 +44,25 @@ public class MailService {
             throw new RuntimeException("Failed to send verification email: " + e.getMessage(), e);
         }
     }
+
+    public void sendPasswordResetEmail(String toEmail, String token) {
+        String link = appBaseUrl + "/auth/reset-password?token=" + token;
+        SimpleMailMessage msg = new SimpleMailMessage();
+        msg.setFrom(fromName + " <" + from + ">");
+        msg.setTo(toEmail);
+        msg.setSubject("DataPulse — Şifre Sıfırlama");
+        msg.setText(
+                "Merhaba,\n\n" +
+                "Şifrenizi sıfırlamak için aşağıdaki bağlantıya tıklayın:\n\n" +
+                link + "\n\n" +
+                "Bu bağlantı 1 saat boyunca geçerlidir.\n\n" +
+                "Bu e-postayı siz talep etmediyseniz dikkate almayın.\n\n" +
+                "— DataPulse ekibi");
+        try {
+            mailSender.send(msg);
+            log.info("Password reset email sent to {}", toEmail);
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to {}: {}", toEmail, e.getMessage());
+        }
+    }
 }
