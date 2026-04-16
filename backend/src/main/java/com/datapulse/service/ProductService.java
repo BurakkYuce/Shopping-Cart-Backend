@@ -41,6 +41,7 @@ public class ProductService {
     private final ReviewRepository reviewRepository;
     private final OrderItemRepository orderItemRepository;
     private final LogEventPublisher logEventPublisher;
+    private final NotificationDispatcher notificationDispatcher;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -141,6 +142,7 @@ public class ProductService {
         if (req.getStockQuantity() != null) product.setStockQuantity(req.getStockQuantity());
 
         productRepository.save(product);
+        notificationDispatcher.dispatchNewArrival(product.getId(), product.getName());
         return ProductResponse.from(product);
     }
 

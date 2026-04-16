@@ -2,20 +2,21 @@ package com.datapulse.service;
 
 import com.datapulse.dto.response.AnalyticsCustomerResponse;
 import com.datapulse.dto.response.AnalyticsSalesResponse;
-import com.datapulse.exception.UnauthorizedAccessException;
-import com.datapulse.model.CustomerProfile;
+import com.datapulse.model.Address;
 import com.datapulse.model.Order;
+import com.datapulse.model.Review;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.User;
 import com.datapulse.model.enums.OrderStatus;
 import com.datapulse.model.enums.PaymentMethod;
+import com.datapulse.repository.AddressRepository;
 import com.datapulse.repository.CategoryRepository;
-import com.datapulse.repository.CustomerProfileRepository;
 import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.OrderRepository;
 import com.datapulse.repository.ProductRepository;
 import com.datapulse.repository.ReviewRepository;
 import com.datapulse.repository.StoreRepository;
+import com.datapulse.repository.UserRepository;
 import com.datapulse.security.UserDetailsImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +30,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -45,9 +45,6 @@ class AnalyticsServiceTest {
     private OrderItemRepository orderItemRepository;
 
     @Mock
-    private CustomerProfileRepository customerProfileRepository;
-
-    @Mock
     private ProductRepository productRepository;
 
     @Mock
@@ -58,6 +55,12 @@ class AnalyticsServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
+
+    @Mock
+    private AddressRepository addressRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private AnalyticsService analyticsService;
@@ -108,36 +111,32 @@ class AnalyticsServiceTest {
     }
 
     @Test
-    void getCustomerAnalytics_notAdmin_throwsUnauthorized() {
+    void getCustomerAnalytics_individual_returnsSelfScopedData() {
         Authentication auth = buildIndividualAuth();
 
-        assertThrows(UnauthorizedAccessException.class,
-                () -> analyticsService.getCustomerAnalytics(auth));
-    }
+        LocalDateTime now = LocalDateTime.now();
+        Order ord = buildOrder("ord1", "user1", "store1", OrderStatus.DELIVERED, 1500.0, PaymentMethod.CREDIT_CARD, now);
+        when(orderRepository.findByUserIdIn(List.of("user1"))).thenReturn(List.of(ord));
 
-    @Test
-    void getCustomerAnalytics_admin_returnsData() {
-        Authentication auth = buildAdminAuth();
+        Review r = new Review();
+        r.setId("rev1");
+        r.setUserId("user1");
+        r.setStarRating(5);
+        when(reviewRepository.findByUserIdIn(List.of("user1"))).thenReturn(List.of(r));
 
-        CustomerProfile profile1 = new CustomerProfile();
-        profile1.setId("p1"); profile1.setUserId("user1"); profile1.setAge(30);
-        profile1.setCity("Istanbul"); profile1.setMembershipType("Gold");
-        profile1.setTotalSpend(500.0); profile1.setItemsPurchased(5);
-        profile1.setAverageRating(4.5); profile1.setSatisfactionLevel("High");
-
-        CustomerProfile profile2 = new CustomerProfile();
-        profile2.setId("p2"); profile2.setUserId("user2"); profile2.setAge(40);
-        profile2.setCity("Istanbul"); profile2.setMembershipType("Gold");
-        profile2.setTotalSpend(500.0); profile2.setItemsPurchased(10);
-        profile2.setAverageRating(3.8); profile2.setSatisfactionLevel("Medium");
-
-        when(customerProfileRepository.findAll()).thenReturn(List.of(profile1, profile2));
+        Address addr = new Address();
+        addr.setId("addr1");
+        addr.setUserId("user1");
+        addr.setCity("Istanbul");
+        addr.setIsDefault(true);
+        when(addressRepository.findByUserIdIn(List.of("user1"))).thenReturn(List.of(addr));
 
         AnalyticsCustomerResponse response = analyticsService.getCustomerAnalytics(auth);
 
         assertNotNull(response);
-        assertEquals(35.0, response.getAverageAge());
-        assertTrue(response.getSpendByMembership().containsKey("Gold"));
+        assertTrue(response.getSpendByMembership().containsKey("Silver"));
+        assertTrue(response.getSatisfactionDistribution().containsKey("Satisfied"));
+        assertTrue(response.getTopCities().containsKey("Istanbul"));
     }
 
     private Order buildOrder(String id, String userId, String storeId, OrderStatus status,

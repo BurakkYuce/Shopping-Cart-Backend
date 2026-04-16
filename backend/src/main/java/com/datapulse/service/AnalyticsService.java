@@ -7,23 +7,25 @@ import com.datapulse.dto.response.CustomerSegmentResponse;
 import com.datapulse.dto.response.StoreKpiResponse;
 import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
+import com.datapulse.model.Address;
 import com.datapulse.model.Category;
-import com.datapulse.model.CustomerProfile;
 import com.datapulse.model.Order;
 import com.datapulse.model.OrderItem;
 import com.datapulse.model.Product;
 import com.datapulse.model.Review;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.Store;
+import com.datapulse.repository.AddressRepository;
 import com.datapulse.repository.CategoryRepository;
-import com.datapulse.repository.CustomerProfileRepository;
 import com.datapulse.repository.OrderItemRepository;
 import com.datapulse.repository.OrderRepository;
 import com.datapulse.repository.ProductRepository;
 import com.datapulse.repository.ReviewRepository;
 import com.datapulse.repository.StoreRepository;
+import com.datapulse.repository.UserRepository;
 import com.datapulse.security.UserDetailsImpl;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
@@ -43,16 +45,19 @@ public class AnalyticsService {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
-    private final CustomerProfileRepository customerProfileRepository;
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final StoreRepository storeRepository;
     private final ReviewRepository reviewRepository;
+    private final AddressRepository addressRepository;
+    private final UserRepository userRepository;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
     }
 
+    @Cacheable(value = "analyticsSales",
+            key = "T(java.util.Objects).hash(#auth.principal.id, #auth.principal.role, #from, #to)")
     public AnalyticsSalesResponse getSalesAnalytics(LocalDateTime from, LocalDateTime to, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
@@ -96,45 +101,81 @@ public class AnalyticsService {
         return response;
     }
 
+    @Cacheable(value = "analyticsCustomers",
+            key = "T(java.util.Objects).hash(#auth.principal.id, #auth.principal.role)")
     public AnalyticsCustomerResponse getCustomerAnalytics(Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
 
-        List<CustomerProfile> profiles;
+        // Scope: INDIVIDUAL sees only themselves; CORPORATE sees their store customers;
+        // ADMIN sees everyone.
+        List<String> scopedUserIds;
         if (role == RoleType.INDIVIDUAL) {
-            profiles = customerProfileRepository.findByUserId(currentUser.getId())
-                    .map(List::of).orElse(List.of());
+            scopedUserIds = List.of(currentUser.getId());
+        } else if (role == RoleType.CORPORATE) {
+            List<String> storeIds = storeRepository.findByOwnerId(currentUser.getId())
+                    .stream().map(Store::getId).toList();
+            scopedUserIds = orderRepository.findByStoreIdIn(storeIds).stream()
+                    .map(Order::getUserId).distinct().toList();
         } else {
-            profiles = customerProfileRepository.findAll();
+            scopedUserIds = null; // sentinel: no filter — all users
         }
 
-        double avgAge = profiles.stream()
-                .filter(p -> p.getAge() != null)
-                .mapToInt(CustomerProfile::getAge)
-                .average()
-                .orElse(0.0);
+        // Spend per user (derived from orders) → membership tier from thresholds.
+        Map<String, Double> spendByUser;
+        List<Order> scopedOrders = scopedUserIds == null
+                ? orderRepository.findAll()
+                : orderRepository.findByUserIdIn(scopedUserIds);
+        spendByUser = scopedOrders.stream()
+                .filter(o -> o.getGrandTotal() != null)
+                .collect(Collectors.groupingBy(Order::getUserId,
+                        Collectors.summingDouble(Order::getGrandTotal)));
 
-        Map<String, Double> spendByMembership = profiles.stream()
-                .filter(p -> p.getMembershipType() != null && p.getTotalSpend() != null)
-                .collect(Collectors.groupingBy(
-                        CustomerProfile::getMembershipType,
-                        Collectors.averagingDouble(CustomerProfile::getTotalSpend)
-                ));
+        Map<String, Double> spendByMembership = new LinkedHashMap<>();
+        spendByMembership.put("Gold", 0.0);
+        spendByMembership.put("Silver", 0.0);
+        spendByMembership.put("Bronze", 0.0);
+        Map<String, Long> membershipCounts = new HashMap<>();
+        for (double spend : spendByUser.values()) {
+            String tier = tierFor(spend);
+            spendByMembership.merge(tier, spend, Double::sum);
+            membershipCounts.merge(tier, 1L, Long::sum);
+        }
+        // Convert sum → average per tier
+        spendByMembership.replaceAll((tier, sum) -> {
+            long count = membershipCounts.getOrDefault(tier, 0L);
+            return count > 0 ? Math.round(sum / count * 100.0) / 100.0 : 0.0;
+        });
 
-        Map<String, Long> satisfactionDistribution = profiles.stream()
-                .filter(p -> p.getSatisfactionLevel() != null)
-                .collect(Collectors.groupingBy(
-                        CustomerProfile::getSatisfactionLevel,
-                        Collectors.counting()
-                ));
+        // Satisfaction derived from review star ratings (1-5 → buckets).
+        List<Review> scopedReviews = scopedUserIds == null
+                ? reviewRepository.findAll()
+                : reviewRepository.findByUserIdIn(scopedUserIds);
+        Map<String, Long> satisfactionDistribution = new LinkedHashMap<>();
+        satisfactionDistribution.put("Satisfied", 0L);
+        satisfactionDistribution.put("Neutral", 0L);
+        satisfactionDistribution.put("Unsatisfied", 0L);
+        for (Review r : scopedReviews) {
+            if (r.getStarRating() == null) continue;
+            int s = r.getStarRating();
+            String bucket = s >= 4 ? "Satisfied" : s == 3 ? "Neutral" : "Unsatisfied";
+            satisfactionDistribution.merge(bucket, 1L, Long::sum);
+        }
 
-        Map<String, Long> cityCounts = profiles.stream()
-                .filter(p -> p.getCity() != null)
-                .collect(Collectors.groupingBy(
-                        CustomerProfile::getCity,
-                        Collectors.counting()
-                ));
-
+        // Top cities from user addresses (default address wins; falls back to any address).
+        List<Address> addresses = scopedUserIds == null
+                ? addressRepository.findAll()
+                : addressRepository.findByUserIdIn(scopedUserIds);
+        Map<String, String> cityPerUser = new HashMap<>();
+        for (Address a : addresses) {
+            if (a.getCity() == null || a.getCity().isBlank()) continue;
+            String existing = cityPerUser.get(a.getUserId());
+            if (existing == null || Boolean.TRUE.equals(a.getIsDefault())) {
+                cityPerUser.put(a.getUserId(), a.getCity());
+            }
+        }
+        Map<String, Long> cityCounts = cityPerUser.values().stream()
+                .collect(Collectors.groupingBy(c -> c, Collectors.counting()));
         Map<String, Long> topCities = cityCounts.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
                 .limit(10)
@@ -146,14 +187,20 @@ public class AnalyticsService {
                 ));
 
         AnalyticsCustomerResponse response = new AnalyticsCustomerResponse();
-        response.setAverageAge(avgAge);
         response.setSpendByMembership(spendByMembership);
         response.setSatisfactionDistribution(satisfactionDistribution);
         response.setTopCities(topCities);
-
         return response;
     }
 
+    private static String tierFor(double totalSpend) {
+        if (totalSpend >= 5000.0) return "Gold";
+        if (totalSpend >= 1000.0) return "Silver";
+        return "Bronze";
+    }
+
+    @Cacheable(value = "analyticsProducts",
+            key = "T(java.util.Objects).hash(#auth.principal.id, #auth.principal.role, #storeId)")
     public AnalyticsProductResponse getProductAnalytics(String storeId, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
@@ -179,9 +226,9 @@ public class AnalyticsService {
         Map<String, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
 
-        List<OrderItem> allItems = orderItemRepository.findAll().stream()
-                .filter(item -> productIds.contains(item.getProductId()))
-                .toList();
+        List<OrderItem> allItems = productIds.isEmpty()
+                ? List.of()
+                : orderItemRepository.findByProductIdIn(productIds);
 
         // Group order items by productId
         Map<String, Long> quantityByProduct = allItems.stream()
@@ -247,6 +294,7 @@ public class AnalyticsService {
         return response;
     }
 
+    @Cacheable(value = "analyticsStoreKpi", key = "#storeId")
     public StoreKpiResponse getStoreKpis(String storeId) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Store", storeId));
@@ -263,8 +311,9 @@ public class AnalyticsService {
         Map<String, Product> productMap = products.stream()
                 .collect(Collectors.toMap(Product::getId, p -> p));
 
-        List<OrderItem> items = orderItemRepository.findAll().stream()
-                .filter(i -> productIds.contains(i.getProductId())).toList();
+        List<OrderItem> items = productIds.isEmpty()
+                ? List.of()
+                : orderItemRepository.findByProductIdIn(productIds);
 
         Map<String, Long> qtyByProduct = items.stream()
                 .filter(i -> i.getQuantity() != null)
@@ -303,6 +352,8 @@ public class AnalyticsService {
         return kpi;
     }
 
+    @Cacheable(value = "analyticsSegments",
+            key = "T(java.util.Objects).hash(#auth.principal.id, #auth.principal.role, #storeId)")
     public CustomerSegmentResponse getCustomerSegments(String storeId, Authentication auth) {
         UserDetailsImpl currentUser = getCurrentUser(auth);
         RoleType role = currentUser.getRole();
@@ -367,6 +418,8 @@ public class AnalyticsService {
         return storeIds.stream().map(this::getStoreKpis).toList();
     }
 
+    @Cacheable(value = "analyticsSalesDrillDown",
+            key = "T(java.util.Objects).hash(#auth.principal.id, #auth.principal.role, #groupBy, #storeId, #from, #to)")
     public AnalyticsSalesResponse getSalesWithDrillDown(String groupBy, String storeId,
                                                         LocalDateTime from, LocalDateTime to, Authentication auth) {
         AnalyticsSalesResponse base = getSalesAnalytics(from, to, auth);
@@ -427,10 +480,11 @@ public class AnalyticsService {
         return base;
     }
 
+    @Cacheable(value = "analyticsPlatformOverview")
     public Map<String, Object> getPlatformOverview() {
         List<Order> allOrders = orderRepository.findAll();
         List<Store> allStores = storeRepository.findAll();
-        long userCount = customerProfileRepository.count();
+        long userCount = userRepository.countByRoleType(RoleType.INDIVIDUAL);
 
         double totalGmv = allOrders.stream()
                 .mapToDouble(o -> o.getGrandTotal() != null ? o.getGrandTotal() : 0.0)

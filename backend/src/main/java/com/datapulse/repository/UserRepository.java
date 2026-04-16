@@ -1,5 +1,6 @@
 package com.datapulse.repository;
 
+import com.datapulse.model.RoleType;
 import com.datapulse.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,4 +10,5 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     Optional<User> findByEmailVerificationToken(String token);
+    long countByRoleType(RoleType roleType);
 }

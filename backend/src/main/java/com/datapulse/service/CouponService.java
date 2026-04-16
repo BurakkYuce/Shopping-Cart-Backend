@@ -26,6 +26,7 @@ public class CouponService {
 
     private final CouponRepository couponRepository;
     private final CouponUsageRepository couponUsageRepository;
+    private final NotificationDispatcher notificationDispatcher;
 
     public CouponValidationResponse validateCoupon(String code, String userId, BigDecimal subtotal) {
         Coupon coupon = couponRepository.findByCodeIgnoreCase(code.trim())
@@ -136,6 +137,7 @@ public class CouponService {
         coupon.setCreatedAt(LocalDateTime.now());
 
         couponRepository.save(coupon);
+        notificationDispatcher.dispatchPromotion(coupon.getCode(), coupon.getDescription());
         return CouponResponse.from(coupon);
     }
 

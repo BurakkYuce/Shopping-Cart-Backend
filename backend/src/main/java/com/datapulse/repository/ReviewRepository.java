@@ -9,6 +9,7 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     List<Review> findByProductId(String productId);
     List<Review> findByProductIdIn(List<String> productIds);
     List<Review> findByUserId(String userId);
+    List<Review> findByUserIdIn(List<String> userIds);
     boolean existsByUserIdAndProductId(String userId, String productId);
     void deleteByProductId(String productId);
 }

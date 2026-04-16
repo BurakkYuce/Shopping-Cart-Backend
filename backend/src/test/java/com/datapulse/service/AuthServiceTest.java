@@ -8,7 +8,6 @@ import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.logging.LogEventPublisher;
 import com.datapulse.model.RoleType;
 import com.datapulse.model.User;
-import com.datapulse.repository.CustomerProfileRepository;
 import com.datapulse.repository.UserRepository;
 import com.datapulse.security.JwtUtil;
 import com.datapulse.security.UserDetailsImpl;
@@ -39,9 +38,6 @@ class AuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private CustomerProfileRepository customerProfileRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -135,7 +131,6 @@ class AuthServiceTest {
         assertEquals("INDIVIDUAL", response.getUserRole());
         assertEquals("tok", response.getAccessToken());
         verify(userRepository, times(1)).save(any(com.datapulse.model.User.class));
-        verify(customerProfileRepository, times(1)).save(any(com.datapulse.model.CustomerProfile.class));
     }
 
     @Test

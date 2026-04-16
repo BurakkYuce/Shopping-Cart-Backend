@@ -13,6 +13,7 @@ import java.util.List;
 
 public interface OrderRepository extends JpaRepository<Order, String> {
     List<Order> findByUserId(String userId);
+    List<Order> findByUserIdIn(List<String> userIds);
     Page<Order> findByUserId(String userId, Pageable pageable);
     List<Order> findByStoreId(String storeId);
     List<Order> findByStoreIdIn(List<String> storeIds);

@@ -39,7 +39,6 @@ public class DataLoader implements CommandLineRunner {
     private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
-    private final CustomerProfileRepository customerProfileRepository;
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
@@ -63,7 +62,6 @@ public class DataLoader implements CommandLineRunner {
             loadCategories();
             loadUsers();
             loadStores();
-            loadCustomerProfiles();
             loadProducts();
             loadOrders();
             loadOrderItems();
@@ -110,19 +108,7 @@ public class DataLoader implements CommandLineRunner {
         @CsvBindByName(column = "logo_url") public String logoUrl;
     }
 
-    public static class CustomerProfileRow {
-        @CsvBindByName(column = "id") public String id;
-        @CsvBindByName(column = "user_id") public String userId;
-        @CsvBindByName(column = "age") public String age;
-        @CsvBindByName(column = "city") public String city;
-        @CsvBindByName(column = "membership_type") public String membershipType;
-        @CsvBindByName(column = "total_spend") public String totalSpend;
-        @CsvBindByName(column = "items_purchased") public String itemsPurchased;
-        @CsvBindByName(column = "average_rating") public String averageRating;
-        @CsvBindByName(column = "satisfaction_level") public String satisfactionLevel;
-    }
-
-    public static class ProductRow {
+public static class ProductRow {
         @CsvBindByName(column = "id") public String id;
         @CsvBindByName(column = "store_id") public String storeId;
         @CsvBindByName(column = "category_id") public String categoryId;
@@ -240,27 +226,7 @@ public class DataLoader implements CommandLineRunner {
         log.info("Loaded {} stores", stores.size());
     }
 
-    private void loadCustomerProfiles() throws Exception {
-        List<CustomerProfileRow> rows = parseCsv(datasetsPath + "customer_profiles.csv", CustomerProfileRow.class);
-        List<CustomerProfile> profiles = new ArrayList<>();
-        for (CustomerProfileRow r : rows) {
-            CustomerProfile cp = new CustomerProfile();
-            cp.setId(r.id);
-            cp.setUserId(r.userId);
-            cp.setAge(parseIntSafe(r.age));
-            cp.setCity(r.city);
-            cp.setMembershipType(r.membershipType);
-            cp.setTotalSpend(parseDoubleSafe(r.totalSpend));
-            cp.setItemsPurchased(parseIntSafe(r.itemsPurchased));
-            cp.setAverageRating(parseDoubleSafe(r.averageRating));
-            cp.setSatisfactionLevel(r.satisfactionLevel);
-            profiles.add(cp);
-        }
-        saveBatched(profiles, customerProfileRepository);
-        log.info("Loaded {} customer profiles", profiles.size());
-    }
-
-    private void loadProducts() throws Exception {
+private void loadProducts() throws Exception {
         List<ProductRow> rows = parseCsv(datasetsPath + "products.csv", ProductRow.class);
         List<Product> products = new ArrayList<>();
         for (ProductRow r : rows) {

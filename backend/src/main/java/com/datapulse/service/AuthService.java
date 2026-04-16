@@ -8,10 +8,8 @@ import com.datapulse.exception.EntityNotFoundException;
 import com.datapulse.exception.UnauthorizedAccessException;
 import com.datapulse.logging.LogEventPublisher;
 import com.datapulse.logging.LogEventType;
-import com.datapulse.model.CustomerProfile;
 import com.datapulse.model.User;
 import com.datapulse.model.enums.AccountStatus;
-import com.datapulse.repository.CustomerProfileRepository;
 import com.datapulse.repository.UserRepository;
 import com.datapulse.security.JwtUtil;
 import com.datapulse.security.UserDetailsImpl;
@@ -30,7 +28,6 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -101,12 +98,6 @@ public class AuthService {
         user.setGender(request.getGender());
         user.setEmailVerified(false);
         userRepository.save(user);
-
-        String profileId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        CustomerProfile profile = new CustomerProfile();
-        profile.setId(profileId);
-        profile.setUserId(userId);
-        customerProfileRepository.save(profile);
 
         String token = emailVerificationTokenService.generateAndAssign(user);
         try {

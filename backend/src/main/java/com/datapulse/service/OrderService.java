@@ -56,6 +56,7 @@ public class OrderService {
     private final ReturnRequestRepository returnRequestRepository;
     private final LogEventPublisher logEventPublisher;
     private final PaymentService paymentService;
+    private final NotificationDispatcher notificationDispatcher;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -300,6 +301,10 @@ public class OrderService {
                 Map.of("orderId", id, "previousStatus", previousStatus != null ? previousStatus.name() : "", "newStatus", newStatus.name())
         );
 
+        if (previousStatus != newStatus) {
+            notificationDispatcher.dispatchOrderStatus(order.getUserId(), order.getId(), newStatus.name());
+        }
+
         return buildOrderResponse(order);
     }
 
@@ -339,6 +344,8 @@ public class OrderService {
                 role.name(),
                 Map.of("orderId", id, "previousStatus", previousStatus.name(), "newStatus", OrderStatus.CANCELLED.name())
         );
+
+        notificationDispatcher.dispatchOrderStatus(order.getUserId(), order.getId(), OrderStatus.CANCELLED.name());
 
         return buildOrderResponse(order);
     }
