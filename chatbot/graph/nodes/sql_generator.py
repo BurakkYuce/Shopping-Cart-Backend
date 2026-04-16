@@ -10,6 +10,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy.exc import SQLAlchemyError
 
 from db.executor import execute_query
+from graph.nodes._history import format_recent_history
 from graph.state import AgentState
 from llm.provider import get_llm
 from rbac.sql_filter import get_sql_filter
@@ -23,18 +24,6 @@ def _get_llm():
     if _LLM is None:
         _LLM = get_llm(temperature=0.0)
     return _LLM
-
-
-def _format_history(history: list[dict]) -> str:
-    if not history:
-        return "(no prior conversation)"
-    recent = history[-6:]  # last 3 Q&A pairs
-    lines = []
-    for msg in recent:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        lines.append(f"{role.upper()}: {content[:300]}")
-    return "\n".join(lines)
 
 
 def _strip_sql_fences(text: str) -> str:
@@ -70,7 +59,7 @@ def sql_generator_node(state: AgentState) -> AgentState:
             user_id=state["user_context"].get("user_id", ""),
             role_filter_cte_block=_build_cte_block_for_prompt(cte),
             role_usage_hint=state.get("role_usage_hint", ""),
-            message_history=_format_history(state.get("message_history", [])),
+            message_history=format_recent_history(state.get("message_history", [])),
             original_question=state["original_question"],
         )
 

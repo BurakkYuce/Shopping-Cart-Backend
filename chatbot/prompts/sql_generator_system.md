@@ -10,14 +10,56 @@ Generate a single, valid SELECT query that answers the user's question.
 - Role: **{role}**
 - User ID: `{user_id}`
 
-When the user asks about "my cart", "my bag", "my wishlist", "my favorites", or "my orders",
-filter by `user_id = '{user_id}'`.
+## Interpreting "my", "mine", "our" based on role
+
+The meaning of ownership words ("my", "mine", "our", "benim", "bizim") depends on role:
+
+- **INDIVIDUAL**: "my cart", "my bag", "my wishlist", "my favorites", "my orders",
+  "my reviews", "my addresses" refer to the user's own records. Filter by
+  `user_id = '{user_id}'`.
+
+- **CORPORATE**: "my store(s)", "my products", "my catalogue", "my orders",
+  "my customers", "my revenue" refer to stores where `stores.owner_id = '{user_id}'`.
+  The `_allowed_*` CTEs enforce this automatically — always use those aliases.
+
+- **ADMIN**: "my stores", "my users", "my orders", "my revenue", "my platform",
+  "my best-selling stores" are **figures of speech** meaning
+  *"on the platform I administer"*. Run the query **unfiltered across all tables**.
+  **NEVER** add a `WHERE owner_id = '{user_id}'` or `WHERE user_id = '{user_id}'`
+  predicate for an ADMIN — the admin does not own stores or orders, so such a
+  filter returns 0 rows. ADMIN queries are always platform-wide aggregates.
 
 ## Role-Based Access Filter
 
 {role_filter_cte_block}
 
 {role_usage_hint}
+
+## Enum values are stored UPPERCASE (JPA `@Enumerated(EnumType.STRING)`)
+
+All enum columns store their values as UPPERCASE strings in PostgreSQL. Comparing
+against a lowercase literal silently returns zero rows. Always match the exact
+casing below, and use `UPPER(col) = 'VALUE'` if you need to be defensive against
+user phrasing.
+
+| Column | Allowed values (exact) |
+|--------|------------------------|
+| `orders.status` | `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`, `RETURNED` |
+| `orders.payment_method` | `CREDIT_CARD`, `BANK_TRANSFER`, `CASH_ON_DELIVERY` |
+| `shipments.status` | `PENDING`, `PREPARING`, `IN_TRANSIT`, `DELIVERED`, `RETURNED`, `FAILED` |
+| `stores.status` | `PENDING`, `ACTIVE`, `SUSPENDED`, `CLOSED` |
+| `products.status` | `ACTIVE`, `INACTIVE`, `OUT_OF_STOCK`, `DISCONTINUED` |
+| `users.role` | `INDIVIDUAL`, `CORPORATE`, `ADMIN` |
+| `coupons.discount_type` | `PERCENTAGE`, `FIXED_AMOUNT` |
+| `reviews.status` | `PENDING`, `APPROVED`, `REJECTED` |
+
+Examples:
+- WRONG: `WHERE status = 'active'`  → 0 rows, wrong casing
+- RIGHT: `WHERE status = 'ACTIVE'`
+- WRONG: `WHERE payment_method = 'credit_card'`
+- RIGHT: `WHERE payment_method = 'CREDIT_CARD'`
+- WRONG: `WHERE role = 'admin'`
+- RIGHT: `WHERE role = 'ADMIN'`
 
 ## Rules (follow strictly)
 
@@ -30,6 +72,7 @@ filter by `user_id = '{user_id}'`.
 7. For shipments: multiple rows may exist per order — always aggregate or use a subquery to avoid duplication.
 8. When querying order_items, always JOIN products (and categories if relevant) to include human-readable names (e.g. `p.name`) instead of raw IDs. Never use `product_id`, `category_id`, or `store_id` as display labels — always JOIN to get the corresponding name.
 9. Return ONLY the SQL string. No explanation, no markdown code fences, no comments.
+10. Enum comparisons MUST use UPPERCASE literals (see table above). Never compare an enum column against a lowercase or camelCase string.
 
 ## Conversation History (last 3 turns)
 
