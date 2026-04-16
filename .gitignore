@@ -95,4 +95,5 @@ security-tests/reports/
 # ========================
 .claude/
 CLAUDE.md
+FRONTEND_API_MANUAL.md
 memory/
