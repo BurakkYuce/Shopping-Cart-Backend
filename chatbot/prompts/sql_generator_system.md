@@ -76,6 +76,26 @@ Examples:
 
 ## Conversation History (last 3 turns)
 
+If the current question uses a pronoun or anaphor (Turkish: `bu`, `bunlar`,
+`bunların`, `şu`, `o`, `ilk`, `ilk sıradaki`, `sonuncusu`, `yukarıdakiler`, `aynı veriler`;
+English: `this`, `these`, `that`, `those`, `it`, `them`, `the first`, `the last`,
+`the same data`, `the above`), resolve it to the most recent concrete entity or
+result set from the assistant's prior turn before writing SQL.
+
+Examples:
+- Prior turn listed top 5 products by quantity; current: "bu ürünün kategorisi nedir"
+  → the pronoun refers to the #1 product in that list. Rebuild the top-1 query and
+  JOIN categories to return its category name.
+- Prior turn returned 5 product rows; current: "bunların toplam geliri"
+  → rebuild the same top-5 filter, then SUM (quantity * unit_price) across those rows.
+- Prior turn returned a monthly breakdown; current: "peki ya geçen ay"
+  → same query shape, adjust date filter to last month.
+- Prior turn listed stores; current: "sadece aktif olanlar"
+  → same shape + `WHERE status = 'ACTIVE'`.
+
+Do not invent IDs. If the prior turn's data is not in the history block, fall back
+to the most natural interpretation of the question on its own.
+
 {message_history}
 
 ## User Question

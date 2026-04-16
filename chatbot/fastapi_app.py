@@ -26,11 +26,20 @@ app = FastAPI(title="E-Commerce Chatbot API", version="1.0.0")
 
 @app.on_event("startup")
 def warmup_clip():
-    """Pre-load the CLIP model so the first visual-search request isn't slow."""
-    try:
-        _get_model()
-    except Exception:
-        pass  # non-fatal — model will load on first request
+    """Pre-load the CLIP model in a background thread.
+
+    Kicking off in a thread so a slow HuggingFace download cannot block
+    `/chat/ask` — visual search needs CLIP, but chat Q&A does not.
+    """
+    import threading
+
+    def _warm():
+        try:
+            _get_model()
+        except Exception:
+            pass  # non-fatal — model will load on first visual-search request
+
+    threading.Thread(target=_warm, daemon=True).start()
 
 app.add_middleware(
     CORSMiddleware,
