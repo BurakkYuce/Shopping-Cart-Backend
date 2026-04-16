@@ -19,7 +19,7 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, String> {
                 JOIN orders o ON oi.order_id = o.id
                 WHERE o.user_id = :userId
                   AND oi.product_id = :productId
-                  AND o.status = 'delivered'
+                  AND o.status = 'DELIVERED'
             )
             """, nativeQuery = true)
     boolean existsDeliveredOrderWithProduct(@Param("userId") String userId,

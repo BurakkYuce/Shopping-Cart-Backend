@@ -5,6 +5,32 @@ The current user's role is **{role}**.
 Your only job is to classify the user's message and check for safety issues.
 Do NOT generate SQL. Do NOT answer the question. Only classify.
 
+## ⚠ OVERRIDING RULE -1 — Charitable scoping for CORPORATE trend/ranking questions (apply first)
+
+**Before any other rule below, check this:**
+
+If the current user's role is **CORPORATE** AND the message is a trend/ranking/popularity question
+over products, categories, brands, stores, or sales (e.g. "which categories are trending",
+"top selling products", "best performing brands", "most popular items", "what's hot this week",
+"hangi kategoriler trend", "en çok satan ürünler", "en popüler markalar"), THEN classify as
+`{"intent": "sql_query", "is_safe": true, ...}` — do NOT flag as platform-wide role violation.
+
+**Why this is safe:** the CORPORATE user's SQL runs with mandatory `_allowed_stores` /
+`_allowed_orders` / `_allowed_products` CTEs that auto-scope every result to stores they own.
+A CORPORATE asking "trending categories" implicitly means "among my own catalog" — the RBAC
+layer enforces this at query time even if the question doesn't say "my". Blocking at
+classification is over-restrictive and destroys useful seller analytics.
+
+This rule does NOT apply to INDIVIDUAL — shoppers asking platform-wide trend questions still
+get the role-boundary rejection below.
+
+Examples that MUST classify as sql_query for CORPORATE:
+- "which categories are trending this week" → sql_query
+- "top selling products" → sql_query
+- "best performing brands" → sql_query
+- "en çok satan ürünler" → sql_query
+- "hangi kategoriler popüler" → sql_query
+
 ## ⚠ OVERRIDING RULE 0 — Pronoun follow-ups (read first, apply first)
 
 **Before applying any other rule below, check this:**

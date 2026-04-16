@@ -32,6 +32,10 @@ public class NotificationPreferenceService {
         if (req.getNewArrivals() != null) pref.setNewArrivals(req.getNewArrivals());
         if (req.getPromotions() != null) pref.setPromotions(req.getPromotions());
         if (req.getNewsletter() != null) pref.setNewsletter(req.getNewsletter());
+        if (req.getNewOrderSeller() != null) pref.setNewOrderSeller(req.getNewOrderSeller());
+        if (req.getLowStockAlert() != null) pref.setLowStockAlert(req.getLowStockAlert());
+        if (req.getNewReviewAlert() != null) pref.setNewReviewAlert(req.getNewReviewAlert());
+        if (req.getWeeklyStoreDigest() != null) pref.setWeeklyStoreDigest(req.getWeeklyStoreDigest());
         return repository.save(pref);
     }
 }

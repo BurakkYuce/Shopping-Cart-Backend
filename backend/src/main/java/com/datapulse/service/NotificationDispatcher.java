@@ -49,4 +49,49 @@ public class NotificationDispatcher {
             mailService.sendPromotionEmail(u.getEmail(), code, description);
         }
     }
+
+    /** Fanout to everyone who opted into the weekly newsletter. */
+    public void dispatchWeeklyNewsletter(int newArrivalsCount, int activePromos) {
+        List<String> userIds = prefRepo.findUserIdsWithNewsletterEnabled();
+        if (userIds.isEmpty()) return;
+        List<User> users = userRepo.findAllById(userIds);
+        log.info("Dispatching weekly newsletter to {} recipients", users.size());
+        for (User u : users) {
+            mailService.sendWeeklyNewsletterEmail(u.getEmail(), newArrivalsCount, activePromos);
+        }
+    }
+
+    /** Notify a seller about a new order, respecting their newOrderSeller flag. */
+    public void dispatchNewOrderToSeller(String sellerUserId, String orderId, String buyerName, String total) {
+        NotificationPreference pref = prefRepo.findById(sellerUserId).orElse(null);
+        if (pref != null && !Boolean.TRUE.equals(pref.getNewOrderSeller())) return;
+        userRepo.findById(sellerUserId).ifPresent(u ->
+                mailService.sendNewOrderToSellerEmail(u.getEmail(), orderId, buyerName, total));
+    }
+
+    /** Notify a seller that one of their products is running low on stock. */
+    public void dispatchLowStock(String sellerUserId, String productName, int remaining, int threshold) {
+        NotificationPreference pref = prefRepo.findById(sellerUserId).orElse(null);
+        if (pref != null && !Boolean.TRUE.equals(pref.getLowStockAlert())) return;
+        userRepo.findById(sellerUserId).ifPresent(u ->
+                mailService.sendLowStockEmail(u.getEmail(), productName, remaining, threshold));
+    }
+
+    /** Notify a seller when a new review lands on one of their products. */
+    public void dispatchNewReview(String sellerUserId, String productName, int stars, String preview) {
+        NotificationPreference pref = prefRepo.findById(sellerUserId).orElse(null);
+        if (pref != null && !Boolean.TRUE.equals(pref.getNewReviewAlert())) return;
+        userRepo.findById(sellerUserId).ifPresent(u ->
+                mailService.sendNewReviewEmail(u.getEmail(), productName, stars, preview));
+    }
+
+    /** Send a weekly digest to a single seller, respecting their weeklyStoreDigest flag. */
+    public void dispatchWeeklyStoreDigest(String sellerUserId, String storeName,
+                                          long orders, String revenue, long newReviews, long lowStockCount) {
+        NotificationPreference pref = prefRepo.findById(sellerUserId).orElse(null);
+        if (pref != null && !Boolean.TRUE.equals(pref.getWeeklyStoreDigest())) return;
+        userRepo.findById(sellerUserId).ifPresent(u ->
+                mailService.sendWeeklyStoreDigestEmail(u.getEmail(), storeName,
+                        orders, revenue, newReviews, lowStockCount));
+    }
 }

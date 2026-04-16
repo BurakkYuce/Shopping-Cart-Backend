@@ -1,13 +1,15 @@
 """
 FastAPI REST layer — port 8002.
-Exposes POST /chat/ask for Spring Boot's ChatService proxy.
+Exposes POST /chat/ask and POST /chat/ask-stream for Spring Boot's ChatService proxy.
 Shares the same LangGraph graph as the Chainlit UI.
 """
+import json
 import uuid
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from auth.jwt_validator import decode_token
@@ -154,4 +156,103 @@ def chat_ask(
         intent=result_state.get("intent"),
         plotlyJson=plotly_json,
         generatedSql=result_state.get("generated_sql"),
+    )
+
+
+@app.post("/chat/ask-stream")
+def chat_ask_stream(
+    request: ChatRequest,
+    authorization: Optional[str] = Header(default=None),
+):
+    """SSE streaming variant — emits one event per graph node so the frontend
+    can show real-time progress (guardrails → sql → analysis → visualization)."""
+
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+
+    token = authorization[7:].strip()
+    try:
+        user_ctx = decode_token(token)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    sql_filter = get_sql_filter()
+    session_id = request.sessionId or str(uuid.uuid4())
+
+    state: AgentState = {
+        "original_question": request.message,
+        "session_id": session_id,
+        "user_context": {
+            "user_id": user_ctx.user_id,
+            "email": user_ctx.email,
+            "role": user_ctx.role,
+        },
+        "intent": "",
+        "is_safe": True,
+        "guardrail_rejection_reason": None,
+        "schema_context": get_schema_context(),
+        "role_filter_cte": sql_filter.build_cte(user_ctx.role, user_ctx.user_id),
+        "role_usage_hint": sql_filter.build_usage_hint(user_ctx.role),
+        "generated_sql": None,
+        "sql_error": None,
+        "retry_count": 0,
+        "execution_result": None,
+        "analysis_text": "",
+        "visualization_spec": None,
+        "final_response": "",
+        "message_history": request.messageHistory or [],
+        "fatal_error": None,
+    }
+
+    def event_stream():
+        graph = get_graph()
+        collected: dict = {}
+
+        for node_output in graph.stream(state):
+            node_name = list(node_output.keys())[0]
+            node_data = node_output[node_name]
+            collected.update(node_data)
+
+            event: dict = {"node": node_name}
+
+            if node_name == "guardrails":
+                event["intent"] = node_data.get("intent", "")
+                if node_data.get("final_response"):
+                    event["message"] = node_data["final_response"]
+            elif node_name == "sql_generator":
+                event["generatedSql"] = node_data.get("generated_sql")
+                if node_data.get("sql_error"):
+                    event["sqlError"] = node_data["sql_error"]
+            elif node_name == "error_recovery":
+                event["retryCount"] = node_data.get("retry_count", 0)
+            elif node_name == "analysis":
+                event["analysisText"] = node_data.get("analysis_text", "")
+            elif node_name == "visualization":
+                vis = node_data.get("visualization_spec")
+                if vis and vis.get("plotly_json"):
+                    event["plotlyJson"] = vis["plotly_json"]
+                event["message"] = node_data.get("final_response", "")
+            elif node_name == "fatal_sql_handler":
+                event["message"] = node_data.get("final_response", "")
+                event["error"] = True
+
+            yield f"data: {json.dumps(event)}\n\n"
+
+        done = {
+            "node": "__done__",
+            "sessionId": session_id,
+            "status": "completed" if not collected.get("fatal_error") else "error",
+            "intent": collected.get("intent"),
+            "generatedSql": collected.get("generated_sql"),
+        }
+        vis = collected.get("visualization_spec")
+        if vis and vis.get("plotly_json"):
+            done["plotlyJson"] = vis["plotly_json"]
+        done["message"] = collected.get("final_response", "")
+        yield f"data: {json.dumps(done)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

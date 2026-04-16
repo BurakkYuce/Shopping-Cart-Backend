@@ -40,6 +40,19 @@ public class NotificationPreference {
     @Column(name = "newsletter", nullable = false)
     private Boolean newsletter = true;
 
+    // Seller-only (CORPORATE) flags. Dispatcher honors them only for store-owner users.
+    @Column(name = "new_order_seller", nullable = false)
+    private Boolean newOrderSeller = true;
+
+    @Column(name = "low_stock_alert", nullable = false)
+    private Boolean lowStockAlert = true;
+
+    @Column(name = "new_review_alert", nullable = false)
+    private Boolean newReviewAlert = true;
+
+    @Column(name = "weekly_store_digest", nullable = false)
+    private Boolean weeklyStoreDigest = true;
+
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 

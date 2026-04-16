@@ -29,6 +29,7 @@ public class ReviewService {
     private final ProductRepository productRepository;
     private final OrderItemRepository orderItemRepository;
     private final StoreRepository storeRepository;
+    private final NotificationDispatcher notificationDispatcher;
 
     private UserDetailsImpl getCurrentUser(Authentication auth) {
         return (UserDetailsImpl) auth.getPrincipal();
@@ -44,7 +45,7 @@ public class ReviewService {
         String userId = currentUser.getId();
 
         // Verify product exists
-        productRepository.findById(req.getProductId())
+        Product product = productRepository.findById(req.getProductId())
                 .orElseThrow(() -> new EntityNotFoundException("Product", req.getProductId()));
 
         // Must have a delivered order containing this product
@@ -73,6 +74,19 @@ public class ReviewService {
         review.setReviewDate(LocalDate.now());
 
         reviewRepository.save(review);
+
+        try {
+            Store store = storeRepository.findById(product.getStoreId()).orElse(null);
+            if (store != null && store.getOwnerId() != null) {
+                String preview = review.getReviewText();
+                if (preview != null && preview.length() > 200) preview = preview.substring(0, 200) + "…";
+                notificationDispatcher.dispatchNewReview(
+                        store.getOwnerId(), product.getName(), review.getStarRating(), preview);
+            }
+        } catch (Exception ex) {
+            // Review is saved; don't fail the call if the email hiccups.
+        }
+
         return ReviewResponse.from(review);
     }
 

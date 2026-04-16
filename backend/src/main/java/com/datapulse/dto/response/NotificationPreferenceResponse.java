@@ -15,6 +15,11 @@ public class NotificationPreferenceResponse {
     private boolean newArrivals;
     private boolean promotions;
     private boolean newsletter;
+    // seller flags
+    private boolean newOrderSeller;
+    private boolean lowStockAlert;
+    private boolean newReviewAlert;
+    private boolean weeklyStoreDigest;
 
     public static NotificationPreferenceResponse from(NotificationPreference p) {
         return NotificationPreferenceResponse.builder()
@@ -22,6 +27,10 @@ public class NotificationPreferenceResponse {
                 .newArrivals(Boolean.TRUE.equals(p.getNewArrivals()))
                 .promotions(Boolean.TRUE.equals(p.getPromotions()))
                 .newsletter(Boolean.TRUE.equals(p.getNewsletter()))
+                .newOrderSeller(Boolean.TRUE.equals(p.getNewOrderSeller()))
+                .lowStockAlert(Boolean.TRUE.equals(p.getLowStockAlert()))
+                .newReviewAlert(Boolean.TRUE.equals(p.getNewReviewAlert()))
+                .weeklyStoreDigest(Boolean.TRUE.equals(p.getWeeklyStoreDigest()))
                 .build();
     }
 }

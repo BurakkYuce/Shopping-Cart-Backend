@@ -254,6 +254,27 @@ public class OrderService {
                         "transactionId", paymentResult.transactionId())
         );
 
+        // Seller-side notifications: new order + low-stock alerts. Use stream/repo lookups
+        // rather than failing the order if mail plumbing hiccups.
+        try {
+            Store store = storeRepository.findById(req.getStoreId()).orElse(null);
+            if (store != null && store.getOwnerId() != null) {
+                notificationDispatcher.dispatchNewOrderToSeller(
+                        store.getOwnerId(), orderId, currentUser.getUsername(),
+                        grandTotal.toPlainString() + " TL");
+                for (Product p : productsToUpdate) {
+                    int remaining = p.getStockQuantity() == null ? 0 : p.getStockQuantity();
+                    int threshold = p.getLowStockThreshold() == null ? 10 : p.getLowStockThreshold();
+                    if (remaining <= threshold) {
+                        notificationDispatcher.dispatchLowStock(
+                                store.getOwnerId(), p.getName(), remaining, threshold);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            // Never let a notification failure roll back an already-paid order.
+        }
+
         Map<String, Product> productMap = productsToUpdate.stream()
                 .collect(java.util.stream.Collectors.toMap(Product::getId, p -> p));
         return OrderResponse.from(order, orderItems, null, productMap);

@@ -13,4 +13,10 @@ public interface NotificationPreferenceRepository extends JpaRepository<Notifica
 
     @Query("SELECT p.userId FROM NotificationPreference p WHERE p.promotions = true")
     List<String> findUserIdsWithPromotionsEnabled();
+
+    @Query("SELECT p.userId FROM NotificationPreference p WHERE p.newsletter = true")
+    List<String> findUserIdsWithNewsletterEnabled();
+
+    @Query("SELECT p.userId FROM NotificationPreference p WHERE p.weeklyStoreDigest = true")
+    List<String> findUserIdsWithWeeklyDigestEnabled();
 }
