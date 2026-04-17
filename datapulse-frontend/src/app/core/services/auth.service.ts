@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { ChatService } from './chat.service';
 import {
   AuthResponse,
   LoginRequest,
@@ -23,6 +24,7 @@ const USER_ID_KEY = 'dp_user_id';
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly chat = inject(ChatService);
   private readonly baseUrl = `${environment.apiUrl}/auth`;
 
   // Reactive auth state
@@ -97,6 +99,7 @@ export class AuthService {
     this._isAuthenticated.set(false);
     this._userRole.set(null);
     this._userId.set(null);
+    this.chat.reset();
   }
 
   getAccessToken(): string | null {

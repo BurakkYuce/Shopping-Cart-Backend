@@ -10,6 +10,7 @@ export interface Product {
   stockQuantity: number;
   brand?: string;
   rating?: number;
+  reviewCount?: number;
   retailPrice?: number;
 }
 
@@ -67,6 +68,8 @@ export interface Review {
   sentiment?: string;
   verifiedPurchase?: string;
   reviewDate?: string;
+  sellerResponse?: string;
+  sellerResponseDate?: string;
 }
 
 export interface CreateReviewRequest {

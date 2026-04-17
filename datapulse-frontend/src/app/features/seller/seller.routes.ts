@@ -23,6 +23,11 @@ export const SELLER_ROUTES: Routes = [
           import('./orders/seller-orders.component').then((m) => m.SellerOrdersComponent),
       },
       {
+        path: 'reviews',
+        loadComponent: () =>
+          import('./reviews/seller-reviews.component').then((m) => m.SellerReviewsComponent),
+      },
+      {
         path: 'analytics',
         loadComponent: () =>
           import('./analytics/seller-analytics.component').then((m) => m.SellerAnalyticsComponent),

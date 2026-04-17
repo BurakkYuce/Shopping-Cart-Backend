@@ -4,46 +4,64 @@
 
   <app-spinner *ngIf="loading()"></app-spinner>
 
-  <div *ngIf="!loading() && cart.cartSig().items.length === 0" class="mt-10">
+  <!-- Admin/Corporate cannot use cart -->
+  <div *ngIf="!loading() && !isCustomer()" class="mt-10">
+    <app-empty-state icon="admin_panel_settings" title="Cart is not available" message="Shopping cart is only available for individual customer accounts. Please switch to a customer account to shop.">
+      <a routerLink="/products" class="btn-primary mt-6">Browse Products</a>
+    </app-empty-state>
+  </div>
+
+  <div *ngIf="!loading() && isCustomer() && cart.cartSig().items.length === 0" class="mt-10">
     <app-empty-state icon="shopping_bag" title="Your bag is empty" message="Discover pieces you'll love in our collection.">
       <a routerLink="/products" class="btn-primary mt-6">Explore the Edit</a>
     </app-empty-state>
   </div>
 
-  <div *ngIf="!loading() && cart.cartSig().items.length > 0" class="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
-    <!-- Items list -->
-    <div class="space-y-4">
-      <article *ngFor="let item of cart.cartSig().items"
-               class="flex gap-5 rounded-2xl bg-background-raised p-5 shadow-atelier-sm">
-        <div class="h-32 w-32 flex-shrink-0 overflow-hidden rounded-xl bg-background-sub">
-          <img *ngIf="imageMap()[item.productId]" [src]="imageMap()[item.productId]" [alt]="item.productName" class="h-full w-full object-cover" />
-          <div *ngIf="!imageMap()[item.productId]" class="flex h-full w-full items-center justify-center text-text-tertiary">
-            <span class="material-symbols-outlined">image</span>
-          </div>
+  <div *ngIf="!loading() && isCustomer() && cart.cartSig().items.length > 0" class="mt-10 grid gap-8 lg:grid-cols-[1fr_400px]">
+    <!-- Items list grouped by store -->
+    <div class="space-y-6">
+      <div *ngFor="let group of storeGroups()" class="rounded-2xl border border-outline/60 overflow-hidden">
+        <!-- Store header -->
+        <div class="flex items-center gap-3 bg-background-sub px-5 py-3">
+          <span class="material-symbols-outlined text-primary" style="font-size: 20px">storefront</span>
+          <a [routerLink]="['/stores', group.storeId]" class="text-sm font-bold text-text-primary hover:text-primary">{{ group.storeName }}</a>
+          <span class="ml-auto text-xs text-text-tertiary">{{ group.items.length }} item{{ group.items.length > 1 ? 's' : '' }} · ${{ group.subtotal | number:'1.2-2' }}</span>
         </div>
-        <div class="flex flex-1 flex-col">
-          <a [routerLink]="['/products', item.productId]" class="text-base font-semibold text-text-primary hover:text-primary">{{ item.productName }}</a>
-          <p class="mt-1 text-xs text-text-tertiary">Item #{{ item.productId }}</p>
-          <div class="mt-auto flex items-center justify-between gap-4">
-            <div class="flex items-center gap-2 rounded-full bg-background-sub p-1">
-              <button (click)="decrement(item)" class="flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Decrease quantity">
-                <span class="material-symbols-outlined" style="font-size: 16px">remove</span>
-              </button>
-              <span class="min-w-[2rem] text-center text-sm font-bold text-text-primary">{{ item.quantity }}</span>
-              <button (click)="increment(item)" class="flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Increase quantity">
-                <span class="material-symbols-outlined" style="font-size: 16px">add</span>
-              </button>
+        <!-- Items in this store -->
+        <div class="space-y-0 divide-y divide-outline/40">
+          <article *ngFor="let item of group.items"
+                   class="flex gap-5 bg-background-raised p-5">
+            <div class="h-28 w-28 flex-shrink-0 overflow-hidden rounded-xl bg-white">
+              <img *ngIf="item.imageUrl" [src]="item.imageUrl" [alt]="item.productName" class="h-full w-full object-contain p-1" />
+              <div *ngIf="!item.imageUrl" class="flex h-full w-full items-center justify-center text-text-tertiary">
+                <span class="material-symbols-outlined">image</span>
+              </div>
             </div>
-            <div class="text-right">
-              <p class="text-lg font-bold text-text-primary">${{ item.lineTotal | number:'1.2-2' }}</p>
-              <p class="text-xs text-text-tertiary">${{ item.unitPrice | number:'1.2-2' }} each</p>
+            <div class="flex flex-1 flex-col">
+              <a [routerLink]="['/products', item.productId]" class="text-base font-semibold text-text-primary hover:text-primary">{{ item.productName }}</a>
+              <p class="mt-1 text-xs text-text-tertiary">Item #{{ item.productId }}</p>
+              <div class="mt-auto flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2 rounded-full bg-background-sub p-1">
+                  <button (click)="decrement(item)" class="flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Decrease quantity">
+                    <span class="material-symbols-outlined" style="font-size: 16px">remove</span>
+                  </button>
+                  <span class="min-w-[2rem] text-center text-sm font-bold text-text-primary">{{ item.quantity }}</span>
+                  <button (click)="increment(item)" class="flex h-8 w-8 items-center justify-center rounded-full bg-background-raised shadow-atelier-sm" aria-label="Increase quantity">
+                    <span class="material-symbols-outlined" style="font-size: 16px">add</span>
+                  </button>
+                </div>
+                <div class="text-right">
+                  <p class="text-lg font-bold text-text-primary">${{ item.lineTotal | number:'1.2-2' }}</p>
+                  <p class="text-xs text-text-tertiary">${{ item.unitPrice | number:'1.2-2' }} each</p>
+                </div>
+              </div>
             </div>
-          </div>
+            <button (click)="remove(item)" class="flex h-9 w-9 items-center justify-center self-start rounded-full text-text-tertiary transition-all hover:bg-danger/10 hover:text-danger" aria-label="Remove item">
+              <span class="material-symbols-outlined" style="font-size: 20px">delete</span>
+            </button>
+          </article>
         </div>
-        <button (click)="remove(item)" class="flex h-9 w-9 items-center justify-center self-start rounded-full text-text-tertiary transition-all hover:bg-danger/10 hover:text-danger" aria-label="Remove item">
-          <span class="material-symbols-outlined" style="font-size: 20px">delete</span>
-        </button>
-      </article>
+      </div>
     </div>
 
     <!-- Summary sidebar -->
@@ -51,7 +69,16 @@
       <h2 class="text-xs font-bold uppercase tracking-wider text-text-primary">Order summary</h2>
       <dl class="mt-5 space-y-3 text-sm">
         <div class="flex justify-between"><dt class="text-text-secondary">Subtotal</dt><dd class="font-semibold text-text-primary">${{ subtotal() | number:'1.2-2' }}</dd></div>
-        <div class="flex justify-between"><dt class="text-text-secondary">Shipping</dt><dd class="font-semibold text-text-primary">{{ shipping() === 0 ? 'Free' : '$' + (shipping() | number:'1.2-2') }}</dd></div>
+        <div *ngIf="discount() > 0" class="flex justify-between">
+          <dt class="text-text-secondary">Discount</dt>
+          <dd class="font-semibold text-success">-${{ discount() | number:'1.2-2' }}</dd>
+        </div>
+        <div class="flex justify-between">
+          <dt class="text-text-secondary">Shipping
+            <span *ngIf="storeShippingCount() > 1" class="text-xs text-text-tertiary">({{ storeShippingCount() }} stores)</span>
+          </dt>
+          <dd class="font-semibold text-text-primary">{{ shipping() === 0 ? 'Free' : '$' + (shipping() | number:'1.2-2') }}</dd>
+        </div>
         <div class="flex justify-between"><dt class="text-text-secondary">Tax (8%)</dt><dd class="font-semibold text-text-primary">${{ tax() | number:'1.2-2' }}</dd></div>
       </dl>
       <div class="mt-5 border-t border-outline/60 pt-5">
@@ -64,9 +91,24 @@
       <!-- Coupon -->
       <div class="mt-6">
         <label class="label-base">Coupon code</label>
-        <div class="flex gap-2">
-          <input type="text" placeholder="WELCOME10" [value]="couponCode()" (input)="couponCode.set($any($event.target).value)" class="input-base bg-background-raised" />
-          <button (click)="applyCoupon()" class="btn-secondary">Apply</button>
+        <div *ngIf="!appliedCoupon()" class="flex gap-2">
+          <input type="text" placeholder="WELCOME10" [value]="couponCode()" (input)="couponCode.set($any($event.target).value)"
+                 (keydown.enter)="applyCoupon()"
+                 class="input-base bg-background-raised" [class.border-danger]="couponError()" />
+          <button (click)="applyCoupon()" [disabled]="couponLoading()" class="btn-secondary">
+            {{ couponLoading() ? '...' : 'Apply' }}
+          </button>
+        </div>
+        <p *ngIf="couponError()" class="mt-1 text-xs text-danger">{{ couponError() }}</p>
+        <div *ngIf="appliedCoupon() as coupon" class="mt-2 flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2">
+          <span class="material-symbols-outlined text-success" style="font-size: 18px">check_circle</span>
+          <div class="flex-1">
+            <span class="text-sm font-bold text-success">{{ coupon.code }}</span>
+            <span class="ml-1 text-xs text-text-secondary">{{ coupon.description }}</span>
+          </div>
+          <button (click)="removeCoupon()" class="text-text-tertiary hover:text-danger">
+            <span class="material-symbols-outlined" style="font-size: 18px">close</span>
+          </button>
         </div>
       </div>
 

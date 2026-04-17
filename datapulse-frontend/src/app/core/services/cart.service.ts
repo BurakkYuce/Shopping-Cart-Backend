@@ -25,6 +25,14 @@ export class CartService {
   readonly itemCount = computed(() => this._cartSig().totalItems);
   readonly totalPrice = computed(() => this._cartSig().totalPrice);
 
+  // Coupon code applied on cart page, consumed during checkout
+  private readonly _appliedCouponCode = signal<string | null>(null);
+  readonly appliedCouponCode = this._appliedCouponCode.asReadonly();
+
+  setCouponCode(code: string | null): void {
+    this._appliedCouponCode.set(code);
+  }
+
   /* ---------- CRUD ---------- */
   fetch(): Observable<Cart> {
     return this.http.get<Cart>(this.baseUrl).pipe(tap((cart) => this.updateCart(cart)));
@@ -55,13 +63,24 @@ export class CartService {
   }
 
   /**
-   * Server-side checkout that converts the current cart into an order.
-   * Backend: POST /cart/checkout body {storeId, paymentMethod}.
+   * Server-side checkout that converts the current cart into orders grouped by store.
+   * Backend: POST /cart/checkout body {paymentMethod, consents} → Order[]
    */
-  checkout(storeId: string, paymentMethod: string): Observable<Order> {
+  checkout(paymentMethod: string, couponCode?: string): Observable<Order[]> {
+    const body: Record<string, unknown> = {
+      paymentMethod,
+      kvkkConsent: true,
+      distanceSaleConsent: true,
+      preInformationConsent: true,
+    };
+    const code = couponCode ?? this._appliedCouponCode();
+    if (code) body['couponCode'] = code;
     return this.http
-      .post<Order>(`${this.baseUrl}/checkout`, { storeId, paymentMethod })
-      .pipe(tap(() => this.updateCart(EMPTY_CART)));
+      .post<Order[]>(`${this.baseUrl}/checkout`, body)
+      .pipe(tap(() => {
+        this.updateCart(EMPTY_CART);
+        this._appliedCouponCode.set(null);
+      }));
   }
 
   /* ---------- Helpers ---------- */

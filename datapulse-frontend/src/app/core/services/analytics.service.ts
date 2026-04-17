@@ -10,6 +10,9 @@ export interface AnalyticsSales {
   orderCount: number;
   averageOrderValue: number;
   revenueByDay: Record<string, number>;
+  revenueByWeek?: Record<string, number>;
+  revenueByMonth?: Record<string, number>;
+  revenueByCategory?: Record<string, number>;
   fromDate?: string;
   toDate?: string;
 }
@@ -35,15 +38,58 @@ export interface TopProduct {
   totalRevenue: number;
 }
 
+/** Mirrors backend platform-overview response. */
+export interface PlatformOverview {
+  totalGmv: number;
+  totalOrders: number;
+  totalUsers: number;
+  totalStores: number;
+  topStores: { storeId: string; storeName: string; revenue: number }[];
+}
+
+/** Mirrors backend StoreKpiResponse. */
+export interface StoreKpi {
+  storeId: string;
+  storeName: string;
+  totalRevenue: number;
+  orderCount: number;
+  averageOrderValue: number;
+  customerCount: number;
+  topProducts: TopProduct[];
+  ratingDistribution: Record<number, number>;
+}
+
+/** Mirrors backend CustomerSegmentResponse. */
+export interface CustomerSegments {
+  segments: Segment[];
+  totalCustomers: number;
+}
+
+export interface Segment {
+  name: string;
+  count: number;
+  percentage: number;
+  avgSpend: number;
+}
+
+export interface SalesParams {
+  from?: string;
+  to?: string;
+  groupBy?: 'day' | 'week' | 'month' | 'category';
+  storeId?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/analytics`;
 
-  getSales(from?: string, to?: string): Observable<AnalyticsSales> {
+  getSales(options?: SalesParams): Observable<AnalyticsSales> {
     let params = new HttpParams();
-    if (from) params = params.set('from', from);
-    if (to) params = params.set('to', to);
+    if (options?.from) params = params.set('from', options.from);
+    if (options?.to) params = params.set('to', options.to);
+    if (options?.groupBy) params = params.set('groupBy', options.groupBy);
+    if (options?.storeId) params = params.set('storeId', options.storeId);
     return this.http.get<AnalyticsSales>(`${this.baseUrl}/sales`, { params });
   }
 
@@ -55,5 +101,23 @@ export class AnalyticsService {
     let params = new HttpParams();
     if (storeId) params = params.set('storeId', storeId);
     return this.http.get<AnalyticsProducts>(`${this.baseUrl}/products`, { params });
+  }
+
+  getPlatformOverview(): Observable<PlatformOverview> {
+    return this.http.get<PlatformOverview>(`${this.baseUrl}/platform-overview`);
+  }
+
+  getStoreKpis(storeId: string): Observable<StoreKpi> {
+    return this.http.get<StoreKpi>(`${this.baseUrl}/store-kpis/${storeId}`);
+  }
+
+  getCustomerSegments(storeId?: string): Observable<CustomerSegments> {
+    let params = new HttpParams();
+    if (storeId) params = params.set('storeId', storeId);
+    return this.http.get<CustomerSegments>(`${this.baseUrl}/customer-segments`, { params });
+  }
+
+  getStoreComparison(): Observable<StoreKpi[]> {
+    return this.http.get<StoreKpi[]>(`${this.baseUrl}/store-comparison`);
   }
 }

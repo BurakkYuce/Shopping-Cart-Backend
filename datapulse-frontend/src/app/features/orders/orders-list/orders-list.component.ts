@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
 import { OrderService } from '../../../core/services/order.service';
-import { Order, OrderStatus } from '../../../core/models/order.models';
+import { Order } from '../../../core/models/order.models';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
@@ -60,8 +60,8 @@ export class OrdersListComponent implements OnInit {
     };
     const t = this.tab();
     if (t !== 'all') {
-      if (t === 'active') params.status = 'pending';
-      else params.status = t as OrderStatus;
+      // Backend expands "active" to PENDING/PROCESSING/SHIPPED; other tabs map 1:1 to a status.
+      params.status = t;
     }
     this.orderService.list(params).subscribe({
       next: (res) => {

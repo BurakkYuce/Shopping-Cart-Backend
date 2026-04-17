@@ -1,5 +1,6 @@
 export type OrderStatus =
   | 'pending'
+  | 'processing'
   | 'shipped'
   | 'delivered'
   | 'cancelled'
@@ -31,6 +32,10 @@ export interface Order {
   userId: string;
   storeId?: string;
   status: OrderStatus | string;
+  subtotal?: number;
+  couponCode?: string;
+  discountAmount?: number;
+  taxAmount?: number;
   grandTotal: number;
   createdAt: string;
   paymentMethod: string;

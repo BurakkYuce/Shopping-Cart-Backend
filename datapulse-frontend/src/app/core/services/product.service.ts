@@ -74,4 +74,21 @@ export class ProductService {
   createReview(body: CreateReviewRequest): Observable<Review> {
     return this.http.post<Review>(`${this.baseUrl}/reviews`, body);
   }
+
+  respondToReview(reviewId: string, response: string): Observable<Review> {
+    return this.http.patch<Review>(`${this.baseUrl}/reviews/${reviewId}/seller-response`, { response });
+  }
+
+  /* ---------- Admin Store Management ---------- */
+  approveStore(id: string): Observable<Store> {
+    return this.http.post<Store>(`${this.baseUrl}/admin/stores/${id}/approve`, {});
+  }
+
+  suspendStore(id: string): Observable<Store> {
+    return this.http.post<Store>(`${this.baseUrl}/admin/stores/${id}/suspend`, {});
+  }
+
+  closeStore(id: string): Observable<Store> {
+    return this.http.post<Store>(`${this.baseUrl}/admin/stores/${id}/close`, {});
+  }
 }

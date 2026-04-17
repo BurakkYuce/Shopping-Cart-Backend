@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { switchMap } from 'rxjs';
@@ -9,7 +9,7 @@ import { CartService } from '../../../core/services/cart.service';
 import { WishlistService } from '../../../core/services/wishlist.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Product, Review } from '../../../core/models/product.models';
+import { Product, Review, Store } from '../../../core/models/product.models';
 import { StarRatingComponent } from '../../../shared/components/star-rating/star-rating.component';
 import { SpinnerComponent } from '../../../shared/components/spinner/spinner.component';
 import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
@@ -28,10 +28,16 @@ export class ProductDetailComponent implements OnInit {
   private readonly wishlist = inject(WishlistService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(NotificationService);
+  private readonly location = inject(Location);
+
+  goBack(): void {
+    this.location.back();
+  }
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly product = signal<Product | null>(null);
+  readonly store = signal<Store | null>(null);
   readonly related = signal<Product[]>([]);
   readonly reviews = signal<Review[]>([]);
   readonly loading = signal<boolean>(true);
@@ -45,6 +51,13 @@ export class ProductDetailComponent implements OnInit {
   readonly submittingReview = signal<boolean>(false);
   readonly reviewError = signal<string | null>(null);
   readonly reviewSuccess = signal<boolean>(false);
+
+  // Image zoom state
+  readonly zooming = signal<boolean>(false);
+  readonly zoomOrigin = signal<string>('center center');
+  readonly lightboxOpen = signal<boolean>(false);
+  readonly lightboxZoomed = signal<boolean>(false);
+  readonly lightboxZoomOrigin = signal<string>('center center');
 
   readonly discountPct = computed(() => {
     const p = this.product();
@@ -83,6 +96,7 @@ export class ProductDetailComponent implements OnInit {
         this.quantity.set(1);
         this.selectedImage.set(0);
         this.product.set(null);
+        this.store.set(null);
         return this.productService.get(id);
       }),
     ).subscribe({
@@ -91,6 +105,7 @@ export class ProductDetailComponent implements OnInit {
         this.loading.set(false);
         this.loadRelated(p);
         this.loadReviews(p.id);
+        this.loadStore(p.storeId);
       },
       error: () => this.loading.set(false),
     });
@@ -164,6 +179,41 @@ export class ProductDetailComponent implements OnInit {
     });
   }
 
+  onImageMouseMove(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    this.zoomOrigin.set(`${x}% ${y}%`);
+    this.zooming.set(true);
+  }
+
+  onImageMouseLeave(): void {
+    this.zooming.set(false);
+  }
+
+  openLightbox(): void {
+    this.zooming.set(false);
+    this.lightboxOpen.set(true);
+    this.lightboxZoomed.set(false);
+  }
+
+  closeLightbox(): void {
+    this.lightboxOpen.set(false);
+    this.lightboxZoomed.set(false);
+  }
+
+  toggleLightboxZoom(event: MouseEvent): void {
+    if (!this.lightboxZoomed()) {
+      const target = event.target as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
+      this.lightboxZoomOrigin.set(`${x}% ${y}%`);
+    }
+    this.lightboxZoomed.update((v) => !v);
+  }
+
   toggleWishlist(): void {
     const p = this.product();
     if (!p) return;
@@ -189,6 +239,14 @@ export class ProductDetailComponent implements OnInit {
     this.productService.listReviews(id).subscribe({
       next: (revs) => this.reviews.set(revs),
       error: () => this.reviews.set([]),
+    });
+  }
+
+  private loadStore(id: string): void {
+    if (!id) return;
+    this.productService.getStore(id).subscribe({
+      next: (s) => this.store.set(s),
+      error: () => this.store.set(null),
     });
   }
 }

@@ -5,7 +5,6 @@ import { Router } from '@angular/router';
 
 import { CartService } from '../../core/services/cart.service';
 import { AddressService } from '../../core/services/address.service';
-import { ProductService } from '../../core/services/product.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { Address } from '../../core/models/user.models';
 import { PaymentMethod } from '../../core/models/order.models';
@@ -22,7 +21,6 @@ export class CheckoutComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   readonly cart = inject(CartService);
   private readonly addressService = inject(AddressService);
-  private readonly productService = inject(ProductService);
   private readonly toast = inject(NotificationService);
   private readonly router = inject(Router);
 
@@ -57,7 +55,18 @@ export class CheckoutComponent implements OnInit {
   });
 
   readonly subtotal = computed(() => this.cart.cartSig().totalPrice);
-  readonly shipping = computed(() => (this.subtotal() > 100 ? 0 : 9.9));
+  readonly appliedCouponCode = computed(() => this.cart.appliedCouponCode());
+  readonly shipping = computed(() => {
+    const items = this.cart.cartSig().items;
+    const storeSubtotals = new Map<string, number>();
+    for (const item of items) {
+      const key = item.storeId || 'unknown';
+      storeSubtotals.set(key, (storeSubtotals.get(key) || 0) + item.lineTotal);
+    }
+    let total = 0;
+    storeSubtotals.forEach((sub) => { if (sub <= 100) total += 9.9; });
+    return total;
+  });
   readonly tax = computed(() => +(this.subtotal() * 0.08).toFixed(2));
   readonly total = computed(() => +(this.subtotal() + this.shipping() + this.tax()).toFixed(2));
 
@@ -161,25 +170,14 @@ export class CheckoutComponent implements OnInit {
 
     this.loading.set(true);
 
-    // Backend checkout takes {storeId, paymentMethod} and builds the order
-    // from the server-side cart. Derive storeId from the first cart item's
-    // product since CartItemResponse doesn't carry store information.
-    this.productService.get(cart.items[0].productId).subscribe({
-      next: (product) => {
-        this.cart.checkout(product.storeId, this.paymentMethod()).subscribe({
-          next: (order) => {
-            this.toast.success('Order placed successfully.');
-            this.router.navigate(['/orders', order.id, 'confirmation']);
-          },
-          error: (err) => {
-            this.loading.set(false);
-            this.toast.error(err?.error?.message ?? 'Could not place order.');
-          },
-        });
+    this.cart.checkout(this.paymentMethod()).subscribe({
+      next: (orders) => {
+        this.toast.success(`${orders.length} order${orders.length > 1 ? 's' : ''} placed successfully.`);
+        this.router.navigate(['/orders', orders[0].id, 'confirmation']);
       },
-      error: () => {
+      error: (err) => {
         this.loading.set(false);
-        this.toast.error('Could not resolve store for checkout.');
+        this.toast.error(err?.error?.message ?? 'Could not place order.');
       },
     });
   }

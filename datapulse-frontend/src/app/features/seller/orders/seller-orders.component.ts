@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -24,6 +24,7 @@ import { NotificationService } from '../../../core/services/notification.service
                 class="rounded-xl bg-background-sub px-4 py-2.5 text-sm font-semibold outline-none">
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
+          <option value="processing">Processing</option>
           <option value="shipped">Shipped</option>
           <option value="delivered">Delivered</option>
           <option value="cancelled">Cancelled</option>
@@ -32,7 +33,14 @@ import { NotificationService } from '../../../core/services/notification.service
 
       <app-spinner *ngIf="loading()"></app-spinner>
 
-      <div *ngIf="!loading()" class="mt-8 overflow-hidden rounded-3xl bg-background-raised shadow-atelier-sm">
+      <!-- Action-required banner so sellers see the queue length at a glance -->
+      <div *ngIf="!loading() && needsActionCount() > 0 && currentPage() === 0"
+           class="mt-6 flex items-center gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-5 py-4 text-sm text-text-primary">
+        <span class="material-symbols-outlined text-warning" style="font-size: 22px">priority_high</span>
+        <p><span class="font-bold">{{ needsActionCount() }}</span> order{{ needsActionCount() === 1 ? '' : 's' }} on this page need your attention — shipping-ready and pending-confirmation orders are listed first.</p>
+      </div>
+
+      <div *ngIf="!loading()" class="mt-6 overflow-hidden rounded-3xl bg-background-raised shadow-atelier-sm">
         <table class="w-full">
           <thead>
             <tr class="border-b border-outline/60">
@@ -45,7 +53,9 @@ import { NotificationService } from '../../../core/services/notification.service
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let o of orders()" class="border-b border-outline/30 last:border-0 hover:bg-background-sub/50">
+            <tr *ngFor="let o of orders()"
+                class="border-b border-outline/30 last:border-0 hover:bg-background-sub/50"
+                [ngClass]="needsAction(o) ? 'bg-warning/5' : ''">
               <td class="px-6 py-4">
                 <p class="font-mono text-sm font-bold text-text-primary">#{{ o.id }}</p>
                 <p class="text-xs text-text-tertiary">{{ o.createdAt | date:'short' }}</p>
@@ -55,9 +65,20 @@ import { NotificationService } from '../../../core/services/notification.service
               <td class="px-6 py-4 text-sm font-bold text-text-primary">\${{ o.grandTotal | number:'1.2-2' }}</td>
               <td class="px-6 py-4"><app-status-badge [status]="o.status"></app-status-badge></td>
               <td class="px-6 py-4 text-right">
-                <button *ngIf="o.status === 'pending'" (click)="markShipped(o)" class="btn-primary text-xs px-3 py-2">
-                  <span class="material-symbols-outlined" style="font-size: 14px">local_shipping</span>Ship
-                </button>
+                <div class="flex items-center justify-end gap-2">
+                  <button *ngIf="o.status === 'pending'" (click)="confirmOrder(o)"
+                          class="flex items-center gap-1 rounded-lg bg-success/10 px-3 py-2 text-xs font-semibold text-success hover:bg-success/20">
+                    <span class="material-symbols-outlined" style="font-size: 14px">check_circle</span>Confirm
+                  </button>
+                  <button *ngIf="o.status === 'processing'" (click)="markShipped(o)"
+                          class="btn-primary text-xs px-3 py-2">
+                    <span class="material-symbols-outlined" style="font-size: 14px">local_shipping</span>Ship
+                  </button>
+                  <button *ngIf="o.status === 'pending' || o.status === 'processing'" (click)="cancelOrder(o)"
+                          class="flex items-center gap-1 rounded-lg bg-danger/10 px-3 py-2 text-xs font-semibold text-danger hover:bg-danger/20">
+                    <span class="material-symbols-outlined" style="font-size: 14px">close</span>Cancel
+                  </button>
+                </div>
               </td>
             </tr>
             <tr *ngIf="orders().length === 0">
@@ -85,6 +106,14 @@ export class SellerOrdersComponent implements OnInit {
   readonly totalElements = signal<number>(0);
   readonly pageSize = 15;
 
+  readonly needsActionCount = computed(
+    () => this.orders().filter((o) => this.needsAction(o)).length,
+  );
+
+  needsAction(o: Order): boolean {
+    return o.status === 'pending' || o.status === 'processing';
+  }
+
   ngOnInit(): void {
     this.fetch();
   }
@@ -100,15 +129,33 @@ export class SellerOrdersComponent implements OnInit {
     this.fetch();
   }
 
+  confirmOrder(order: Order): void {
+    this.orderService.markProcessing(order.id).subscribe({
+      next: () => {
+        this.toast.success(`Order #${order.id} confirmed.`);
+        this.fetch();
+      },
+      error: () => this.toast.error('Could not confirm order.'),
+    });
+  }
+
   markShipped(order: Order): void {
-    // Backend only accepts a status transition — tracking numbers are assigned
-    // by the shipment service on the backend side, not passed in here.
     this.orderService.markShipped(order.id).subscribe({
       next: () => {
         this.toast.success(`Order #${order.id} marked as shipped.`);
         this.fetch();
       },
       error: () => this.toast.error('Could not mark as shipped.'),
+    });
+  }
+
+  cancelOrder(order: Order): void {
+    this.orderService.cancel(order.id).subscribe({
+      next: () => {
+        this.toast.success(`Order #${order.id} cancelled.`);
+        this.fetch();
+      },
+      error: () => this.toast.error('Could not cancel order.'),
     });
   }
 

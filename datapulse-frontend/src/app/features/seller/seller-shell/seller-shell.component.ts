@@ -19,6 +19,7 @@ export class SellerShellComponent {
     { path: '/seller', icon: 'dashboard', label: 'Overview', exact: true },
     { path: '/seller/products', icon: 'inventory_2', label: 'Products' },
     { path: '/seller/orders', icon: 'receipt_long', label: 'Orders' },
+    { path: '/seller/reviews', icon: 'rate_review', label: 'Reviews' },
     { path: '/seller/analytics', icon: 'insights', label: 'Analytics' },
     { path: '/seller/settings', icon: 'tune', label: 'Settings' },
   ];

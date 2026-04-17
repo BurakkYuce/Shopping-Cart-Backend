@@ -6,6 +6,15 @@ export interface CartItem {
   quantity: number;
   lineTotal: number;
   imageUrl?: string;
+  storeId: string;
+  storeName: string;
+}
+
+export interface StoreGroup {
+  storeId: string;
+  storeName: string;
+  items: CartItem[];
+  subtotal: number;
 }
 
 export interface Cart {

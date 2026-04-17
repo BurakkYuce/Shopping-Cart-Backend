@@ -65,6 +65,13 @@ export const routes: Routes = [
           import('./features/account/profile/profile.component').then((m) => m.ProfileComponent),
       },
       {
+        path: 'stores/:id',
+        loadComponent: () =>
+          import('./features/stores/store-detail/store-detail.component').then(
+            (m) => m.StoreDetailComponent,
+          ),
+      },
+      {
         path: 'notifications',
         canActivate: [authGuard],
         loadComponent: () =>

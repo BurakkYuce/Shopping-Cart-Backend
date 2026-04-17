@@ -4,6 +4,7 @@ Exposes POST /chat/ask and POST /chat/ask-stream for Spring Boot's ChatService p
 Shares the same LangGraph graph as the Chainlit UI.
 """
 import json
+import os
 import uuid
 from typing import Optional
 
@@ -43,9 +44,14 @@ def warmup_clip():
 
     threading.Thread(target=_warm, daemon=True).start()
 
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:4200").split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

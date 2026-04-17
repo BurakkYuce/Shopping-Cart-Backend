@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.env.*
+.chainlit/
+tests/
+*.log
+.DS_Store

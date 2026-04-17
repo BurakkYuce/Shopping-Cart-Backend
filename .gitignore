@@ -97,3 +97,11 @@ security-tests/reports/
 CLAUDE.md
 FRONTEND_API_MANUAL.md
 memory/
+
+# ELK log dumps (büyük, runtime artifact)
+elk/backups/*.json
+
+# ========================
+# Seed datasets (CSV'ler EC2'ye scp ile aktarılır, repo'da tutulmaz)
+# ========================
+datasets/

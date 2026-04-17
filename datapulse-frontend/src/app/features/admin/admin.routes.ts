@@ -33,6 +33,11 @@ export const ADMIN_ROUTES: Routes = [
           import('./stores/admin-stores.component').then((m) => m.AdminStoresComponent),
       },
       {
+        path: 'coupons',
+        loadComponent: () =>
+          import('./coupons/admin-coupons.component').then((m) => m.AdminCouponsComponent),
+      },
+      {
         path: 'analytics',
         loadComponent: () =>
           import('./analytics/admin-analytics.component').then((m) => m.AdminAnalyticsComponent),

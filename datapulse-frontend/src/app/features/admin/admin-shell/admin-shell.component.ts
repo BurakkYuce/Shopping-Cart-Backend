@@ -65,6 +65,7 @@ export class AdminShellComponent {
     { path: '/admin/products', icon: 'inventory_2', label: 'Products' },
     { path: '/admin/orders', icon: 'receipt_long', label: 'Orders' },
     { path: '/admin/stores', icon: 'storefront', label: 'Stores' },
+    { path: '/admin/coupons', icon: 'confirmation_number', label: 'Coupons' },
     { path: '/admin/analytics', icon: 'insights', label: 'Analytics' },
   ];
 

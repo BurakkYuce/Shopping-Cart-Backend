@@ -1,0 +1,35 @@
+{
+  "index_patterns": ["ecommerce-logs-*"],
+  "priority": 500,
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "ecommerce-logs-policy",
+      "index.lifecycle.rollover_alias": "ecommerce-logs",
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.refresh_interval": "5s"
+    },
+    "mappings": {
+      "dynamic": "true",
+      "properties": {
+        "@timestamp":       { "type": "date" },
+        "event_type":       { "type": "keyword" },
+        "user_id":          { "type": "keyword" },
+        "user_role":        { "type": "keyword" },
+        "level":            { "type": "keyword" },
+        "service":          { "type": "keyword" },
+        "http_method":      { "type": "keyword" },
+        "endpoint":         { "type": "keyword" },
+        "status_code":      { "type": "integer" },
+        "response_time_ms": { "type": "long" },
+        "client_ip":        { "type": "ip" },
+        "message":          { "type": "text" },
+        "stack_trace":      { "type": "text" },
+        "details":          { "type": "flattened" }
+      }
+    }
+  },
+  "_meta": {
+    "description": "DataPulse e-commerce app logs. Applied by es-setup on stack start."
+  }
+}

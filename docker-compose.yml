@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -9,7 +15,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db-init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     networks:
       - backend-net
     healthcheck:
@@ -17,6 +23,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    logging: *default-logging
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.14
@@ -30,7 +38,7 @@ services:
       - es_data:/usr/share/elasticsearch/data
       - ./elk/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     ports:
-      - "9200:9200"
+      - "127.0.0.1:9200:9200"
     networks:
       - elk-net
       - backend-net
@@ -39,6 +47,8 @@ services:
       interval: 15s
       timeout: 10s
       retries: 10
+    restart: unless-stopped
+    logging: *default-logging
 
   logstash:
     image: docker.elastic.co/logstash/logstash:8.19.14
@@ -47,13 +57,15 @@ services:
     volumes:
       - ./elk/logstash/pipeline:/usr/share/logstash/pipeline:ro
     ports:
-      - "5001:5000/tcp"
+      - "127.0.0.1:5001:5000/tcp"
     depends_on:
       elasticsearch:
         condition: service_healthy
     networks:
       - elk-net
       - backend-net
+    restart: unless-stopped
+    logging: *default-logging
 
   es-setup:
     image: curlimages/curl:latest
@@ -79,12 +91,45 @@ services:
     volumes:
       - ./elk/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     ports:
-      - "5601:5601"
+      - "127.0.0.1:5601:5601"
     depends_on:
       es-setup:
         condition: service_completed_successfully
     networks:
       - elk-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf -u elastic:${ELASTIC_PASSWORD:-elastic} http://localhost:5601/api/status | grep -q '\"level\":\"available\"' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+    restart: unless-stopped
+    logging: *default-logging
+
+  elk-bootstrap:
+    image: curlimages/curl:latest
+    depends_on:
+      kibana:
+        condition: service_healthy
+    environment:
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-elastic}
+    volumes:
+      - ./elk/elasticsearch/templates/ecommerce-logs-template.json:/tmp/template.json:ro
+      - ./elk/elasticsearch/ilm/ecommerce-logs-policy.json:/tmp/ilm.json:ro
+      - ./elk/kibana/exports/datapulse-dashboard.ndjson:/tmp/dashboard.ndjson:ro
+    entrypoint: >
+      sh -c '
+        set -e;
+        echo "[elk-bootstrap] ILM policy...";
+        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X PUT "http://elasticsearch:9200/_ilm/policy/ecommerce-logs-policy" -H "Content-Type: application/json" --data-binary @/tmp/ilm.json >/dev/null && echo "  ILM OK";
+        echo "[elk-bootstrap] Index template...";
+        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X PUT "http://elasticsearch:9200/_index_template/ecommerce-logs" -H "Content-Type: application/json" --data-binary @/tmp/template.json >/dev/null && echo "  Template OK";
+        echo "[elk-bootstrap] Kibana saved objects...";
+        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X POST "http://kibana:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form "file=@/tmp/dashboard.ndjson" >/dev/null && echo "  Dashboard OK";
+        echo "[elk-bootstrap] Done.";
+      '
+    networks:
+      - elk-net
+    restart: "no"
 
   backend:
     build: ./backend
@@ -99,7 +144,7 @@ services:
       SEED_PASSWORD: ${SEED_PASSWORD:-changeme}
       DATALOADER_ENABLED: "true"
       DATASETS_PATH: /datasets/output/
-      CORS_ALLOWED_ORIGINS: http://localhost:4200,http://localhost:5601
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:5601}
       CHATBOT_URL: http://chatbot:8002
       MAIL_HOST: ${MAIL_HOST:-sandbox.smtp.mailtrap.io}
       MAIL_PORT: ${MAIL_PORT:-2525}
@@ -109,9 +154,9 @@ services:
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-DataPulse}
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:4200}
     volumes:
-      - /Users/burak/Desktop/demo-apps/datasets:/datasets:ro
+      - ${DATASETS_HOST_PATH:-./datasets}:/datasets:ro
     ports:
-      - "8080:8080"
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,6 +164,9 @@ services:
         condition: service_started
     networks:
       - backend-net
+    restart: unless-stopped
+    mem_limit: 1g
+    logging: *default-logging
 
   chatbot:
     build: ./chatbot
@@ -136,9 +184,10 @@ services:
       SQL_RETRY_LIMIT: "3"
       CHAINLIT_PORT: "8001"
       FASTAPI_PORT: "8002"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200}
     ports:
-      - "8001:8001"
-      - "8002:8002"
+      - "127.0.0.1:8001:8001"
+      - "127.0.0.1:8002:8002"
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,6 +198,25 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+    mem_limit: 2g
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ../datapulse-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_started
+      chatbot:
+        condition: service_healthy
+    networks:
+      - backend-net
+    restart: unless-stopped
+    logging: *default-logging
 
 networks:
   backend-net:

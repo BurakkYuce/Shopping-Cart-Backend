@@ -191,6 +191,10 @@
       <dl class="mt-5 space-y-3 text-sm">
         <div class="flex justify-between"><dt class="text-text-secondary">Items</dt><dd class="font-semibold text-text-primary">{{ cart.cartSig().totalItems }}</dd></div>
         <div class="flex justify-between"><dt class="text-text-secondary">Subtotal</dt><dd class="font-semibold text-text-primary">${{ subtotal() | number:'1.2-2' }}</dd></div>
+        <div *ngIf="appliedCouponCode()" class="flex justify-between">
+          <dt class="text-text-secondary">Coupon <span class="text-xs font-bold text-success">({{ appliedCouponCode() }})</span></dt>
+          <dd class="font-semibold text-success">Applied</dd>
+        </div>
         <div class="flex justify-between"><dt class="text-text-secondary">Shipping</dt><dd class="font-semibold text-text-primary">{{ shipping() === 0 ? 'Free' : '$' + (shipping() | number:'1.2-2') }}</dd></div>
         <div class="flex justify-between"><dt class="text-text-secondary">Tax</dt><dd class="font-semibold text-text-primary">${{ tax() | number:'1.2-2' }}</dd></div>
       </dl>
