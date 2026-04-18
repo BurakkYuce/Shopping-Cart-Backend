@@ -48,7 +48,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/datapulse-key.pem
           chmod 600 ~/.ssh/datapulse-key.pem
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Rsync chatbot to EC2
         run: |
