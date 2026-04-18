@@ -8,6 +8,7 @@ from pathlib import Path
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from graph.nodes._logging import hash16, log_event, preview
 from graph.state import AgentState
 from llm.provider import get_llm
 
@@ -51,6 +52,7 @@ def error_recovery_node(state: AgentState) -> AgentState:
         original_question=state["original_question"],
         generated_sql=state.get("generated_sql", "(none)"),
         sql_error=state.get("sql_error", "(unknown error)"),
+        error_type=state.get("sql_error_type") or "other",
     )
 
     messages = [
@@ -58,8 +60,29 @@ def error_recovery_node(state: AgentState) -> AgentState:
         HumanMessage(content="Fix the SQL query."),
     ]
 
+    error_type = state.get("sql_error_type") or "other"
+    log_event(
+        "error_recovery.attempt",
+        session_id=state.get("session_id"),
+        user_id=state["user_context"].get("user_id"),
+        role=state["user_context"]["role"],
+        error_type=error_type,
+        error_msg=(state.get("sql_error") or "")[:500],
+        failing_sql_hash=hash16(state.get("generated_sql")),
+        retry_count=retry_count,
+    )
+
     response = _get_llm().invoke(messages)
     corrected_sql = _strip_sql_fences(response.content)
+
+    log_event(
+        "error_recovery.corrected",
+        session_id=state.get("session_id"),
+        user_id=state["user_context"].get("user_id"),
+        corrected_sql_hash=hash16(corrected_sql),
+        corrected_sql_preview=preview(corrected_sql, limit=1200),
+        retry_count=retry_count,
+    )
 
     return {
         **state,

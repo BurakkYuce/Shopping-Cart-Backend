@@ -1,0 +1,76 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    name: Chatbot tests (mock LLM)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: chatbot
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: chatbot/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run chatbot tests
+        env:
+          CI_SKIP_LLM_TESTS: "1"
+        run: pytest tests/ -v --tb=short
+
+  deploy:
+    name: Deploy chatbot to EC2
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/datapulse-key.pem
+          chmod 600 ~/.ssh/datapulse-key.pem
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rsync chatbot to EC2
+        run: |
+          rsync -avz --delete \
+            --exclude __pycache__ \
+            --exclude '*.pyc' \
+            --exclude tests \
+            --exclude .env \
+            --exclude .venv \
+            --exclude .chainlit \
+            -e "ssh -i ~/.ssh/datapulse-key.pem -o StrictHostKeyChecking=no" \
+            chatbot/ ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/aad-backend/Shopping-Cart-Backend/chatbot/
+
+      - name: Restart chatbot container
+        run: |
+          ssh -i ~/.ssh/datapulse-key.pem -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_HOST }} \
+            'cd ~/aad-backend/Shopping-Cart-Backend && docker compose restart chatbot'
+
+      - name: Health check
+        run: |
+          sleep 15
+          ssh -i ~/.ssh/datapulse-key.pem -o StrictHostKeyChecking=no \
+            ubuntu@${{ secrets.EC2_HOST }} \
+            'curl -sf http://localhost:8002/health && echo "Deploy OK"'

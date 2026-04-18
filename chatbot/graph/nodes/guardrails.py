@@ -9,11 +9,15 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from graph.nodes._history import format_recent_history
+from graph.nodes._logging import hash16, log_event, preview
 from graph.state import AgentState
 from llm.provider import get_fast_llm
 
-_PROMPT_PATH = Path(__file__).parent.parent.parent / "prompts" / "guardrails_system.md"
+_PROMPTS_DIR = Path(__file__).parent.parent.parent / "prompts"
+_PROMPT_PATH = _PROMPTS_DIR / "guardrails_system.md"
+_SHARED_CONTEXT_PATH = _PROMPTS_DIR / "_shared_context.md"
 _SYSTEM_PROMPT_TEMPLATE = _PROMPT_PATH.read_text()
+_SHARED_CONTEXT = _SHARED_CONTEXT_PATH.read_text()
 _LLM = None
 
 
@@ -33,6 +37,7 @@ def guardrails_node(state: AgentState) -> AgentState:
         _SYSTEM_PROMPT_TEMPLATE
         .replace("{role}", role)
         .replace("{recent_context}", recent_context)
+        .replace("{shared_context}", _SHARED_CONTEXT)
     )
 
     messages = [
@@ -62,9 +67,29 @@ def guardrails_node(state: AgentState) -> AgentState:
         is_safe = False
         reason = f"Guardrails LLM returned unparseable response: {raw[:200]}"
         language = "en"
+        log_event(
+            "guardrails.parse_error",
+            level="warning",
+            session_id=state.get("session_id"),
+            user_id=user_context.get("user_id"),
+            role=role,
+            raw_preview=raw[:200],
+        )
 
     if language not in ("tr", "en"):
         language = "en"
+
+    log_event(
+        "guardrails.classified",
+        session_id=state.get("session_id"),
+        user_id=user_context.get("user_id"),
+        role=role,
+        question_hash=hash16(question),
+        question_preview=preview(question),
+        intent=intent,
+        is_safe=is_safe,
+        language=language,
+    )
 
     updates: dict = {
         "intent": intent,

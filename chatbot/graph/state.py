@@ -42,6 +42,7 @@ class AgentState(TypedDict):
     role_usage_hint: str      # injected into SQL generator prompt
     generated_sql: Optional[str]
     sql_error: Optional[str]
+    sql_error_type: Optional[str]  # "rbac_violation" | "column_missing" | "table_missing" | "syntax_error" | "timeout" | "other"
     retry_count: int
 
     # ── Results ────────────────────────────────────────────────────────────

@@ -5,8 +5,8 @@ The LLM system prompt instructs the model to always prepend these CTEs and
 use their aliases (_allowed_orders, _allowed_products, etc.) instead of base tables.
 
 ADMIN:      no restriction — empty CTE string
-CORPORATE:  scoped to stores owned by user_id
-INDIVIDUAL: scoped to user's own orders, reviews, profile
+CORPORATE:  scoped to stores owned by user_id (orders, products, order_items, reviews)
+INDIVIDUAL: scoped to user's own orders, reviews, cart_items, order_items
 """
 import re
 
@@ -20,6 +20,14 @@ _allowed_orders AS (
 _allowed_products AS (
     SELECT p.* FROM products p
     JOIN _allowed_stores s ON p.store_id = s.store_id
+),
+_allowed_order_items AS (
+    SELECT oi.* FROM order_items oi
+    JOIN _allowed_orders ao ON oi.order_id = ao.id
+),
+_allowed_reviews AS (
+    SELECT r.* FROM reviews r
+    JOIN _allowed_products ap ON r.product_id = ap.id
 )"""
 
 INDIVIDUAL_CTE = """WITH _allowed_orders AS (
@@ -28,8 +36,12 @@ INDIVIDUAL_CTE = """WITH _allowed_orders AS (
 _allowed_reviews AS (
     SELECT * FROM reviews WHERE user_id = '{user_id}'
 ),
-_allowed_profile AS (
-    SELECT * FROM customer_profiles WHERE user_id = '{user_id}'
+_allowed_cart_items AS (
+    SELECT * FROM cart_items WHERE user_id = '{user_id}'
+),
+_allowed_order_items AS (
+    SELECT oi.* FROM order_items oi
+    JOIN _allowed_orders ao ON oi.order_id = ao.id
 )"""
 
 # Instructions appended to the SQL generator system prompt
@@ -37,13 +49,16 @@ CORPORATE_USAGE_HINT = (
     "When querying orders → use `_allowed_orders` instead of `orders`. "
     "When querying products → use `_allowed_products` instead of `products`. "
     "When querying stores → use `_allowed_stores` instead of `stores`. "
+    "When querying order_items → use `_allowed_order_items` instead of `order_items`. "
+    "When querying reviews → use `_allowed_reviews` instead of `reviews`. "
     "Do NOT query the base tables directly."
 )
 
 INDIVIDUAL_USAGE_HINT = (
     "When querying orders → use `_allowed_orders` instead of `orders`. "
     "When querying reviews → use `_allowed_reviews` instead of `reviews`. "
-    "When querying customer_profiles → use `_allowed_profile` instead of `customer_profiles`. "
+    "When querying cart_items → use `_allowed_cart_items` instead of `cart_items`. "
+    "When querying order_items → use `_allowed_order_items` instead of `order_items`. "
     "Do NOT query the base tables directly."
 )
 
@@ -90,11 +105,11 @@ class SqlFilter:
     # has an `_allowed_` alias that the LLM should use instead. `users` is
     # added universally because no non-admin role should read it directly,
     # even for joins (it holds password_hash). Tables not listed (brands,
-    # categories, cart_items, wishlist_items, coupons, etc.) are public
-    # catalog or self-scoped by user_id — safe to reference as base tables.
+    # categories, wishlist_items, coupons, shipments, etc.) are public
+    # catalog or joined via an allowed alias — safe to reference as base tables.
     _FORBIDDEN_PER_ROLE = {
-        "INDIVIDUAL": ["orders", "reviews", "customer_profiles", "users"],
-        "CORPORATE": ["orders", "products", "stores", "users"],
+        "INDIVIDUAL": ["orders", "reviews", "cart_items", "order_items", "users"],
+        "CORPORATE": ["orders", "products", "stores", "order_items", "reviews", "users"],
     }
 
     def enforce_scope(self, sql: str, role: str) -> str:
@@ -115,10 +130,9 @@ class SqlFilter:
         body = self._split_body(sql)
         for tbl in forbidden:
             if re.search(rf"\b(?:FROM|JOIN)\s+{tbl}\b", body, re.IGNORECASE):
-                alias_suffix = "profile" if tbl == "customer_profiles" else tbl
                 raise ValueError(
                     f"Role '{role}' cannot read base table '{tbl}'. "
-                    f"Use _allowed_{alias_suffix}."
+                    f"Use _allowed_{tbl}."
                 )
         return sql
 

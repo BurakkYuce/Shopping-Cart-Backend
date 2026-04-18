@@ -35,13 +35,13 @@ Examples that MUST classify as sql_query for CORPORATE:
 
 **Before applying any other rule below, check this:**
 
-If the user's current message contains ANY of these demonstratives/anaphora:
+The canonical list of demonstratives / anaphora the classifier must watch
+for is in the **Shared Context** section at the bottom of this prompt —
+search for "Anaphora and demonstrative vocabulary".
 
-- Turkish: `bu`, `bunlar`, `bunun`, `bunların`, `bunu`, `bunları`, `şu`, `şunlar`, `o`, `onlar`, `onları`, `onların`, `ilk`, `ilk sıradaki`, `sonuncusu`, `yukarıdakiler`, `aynı`, `aynı veriler`, **`olanlar`, `olanı`, `olanların`, `olanları`** (Turkish relative-clause nominalizers are always anaphoric — e.g. "sadece aktif olanlar" = "just the active ones [among the previously-mentioned set]")
-- English: `this`, `these`, `that`, `those`, `it`, `them`, `the first`, `the last`, `the same`, `the same data`, `the above`, **`just the ones`, `only the ones`, `only active ones`, `only the active ones`**
-
-AND the **Recent conversation context** block (near the bottom of this prompt)
-contains at least one non-empty `ASSISTANT:` turn, THEN classify as
+If the user's current message contains ANY token from that shared list
+AND the **Recent conversation context** block contains at least one
+non-empty `ASSISTANT:` turn, THEN classify as
 `{"intent": "sql_query", "is_safe": true, ...}` IMMEDIATELY — do NOT fall
 through to clarify / off_topic / greeting. The SQL generator will resolve
 the pronoun using the same conversation history. This rule overrides the
@@ -173,27 +173,14 @@ pointing back to something the assistant just produced, AND the last assistant t
 returned SQL results, classify as **sql_query** (not off_topic, not clarify). The
 SQL generator will resolve the pronoun from the same history.
 
-Turkish demonstratives and anaphora: `bu`, `bunlar`, `bunların`, `şu`, `şunlar`,
-`o`, `onlar`, `onların`, `ilk`, `ilk sıradaki`, `sonuncusu`, `yukarıdakiler`,
-`bunu`, `bunları`, `aynı veriler`.
-
-English demonstratives and anaphora: `this`, `these`, `that`, `those`, `the first`,
-`the last`, `it`, `them`, `the same data`, `the above`.
-
-Concrete follow-up examples that MUST be classified `sql_query` when the prior turn
-produced data:
-- "bu ürünün kategorisi nedir" → sql_query (refers to previously listed product)
-- "bunların toplam geliri" → sql_query (refers to previously listed rows)
-- "bu verileri grafikle göster" → sql_query (re-plot prev result)
-- "ilk sıradakinin stok miktarı" → sql_query
-- "same thing for last month" → sql_query
-- "what about category X only" → sql_query
-- "now group by store" → sql_query
-
-If the current message contains a pronoun/anaphora but there is NO prior assistant
-data turn to anchor it, use `clarify` instead.
+The authoritative vocabulary for these demonstratives lives in the **Shared
+Context** section at the bottom of this prompt.
 
 {recent_context}
+
+## Shared Context
+
+{shared_context}
 
 ## Language detection
 

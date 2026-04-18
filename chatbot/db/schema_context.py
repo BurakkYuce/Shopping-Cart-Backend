@@ -5,17 +5,27 @@ and FK relationships that the LLM needs to write correct JOIN queries.
 """
 
 SCHEMA_CONTEXT = """
+## Business Glossary (canonical metric definitions)
+
+- Revenue           = SUM(order_items.price * order_items.quantity)
+                      (`order_items.price` is the per-unit sale price captured at checkout;
+                      `products.unit_price` is the current catalog price — do NOT use it for
+                      historical revenue.)
+- Order total       = orders.grand_total (includes tax + shipping; differs from item subtotal)
+- Units sold        = SUM(order_items.quantity)
+- Order count       = COUNT(DISTINCT orders.id) across ALL statuses (PENDING, CANCELLED, RETURNED
+                      included) — neutral question "kaç sipariş var"
+- Successful orders = COUNT(DISTINCT orders.id) WHERE status IN
+                      ('CONFIRMED','PROCESSING','SHIPPED','DELIVERED')
+- Active customer   = a user with ≥1 DELIVERED order in the last 30 days
+- Cancelled / Returned / Pending orders contribute ZERO to revenue.
+
 TABLE: users
   Columns: id (VARCHAR PK), email (VARCHAR UNIQUE), role_type (VARCHAR: ADMIN|CORPORATE|INDIVIDUAL), gender (VARCHAR)
   Note: The column `password_hash` EXISTS but must NEVER be queried or returned. Treat it as non-existent.
 
 TABLE: stores
   Columns: id (VARCHAR PK), owner_id (FK → users.id), name (VARCHAR), status (VARCHAR)
-
-TABLE: customer_profiles
-  Columns: id (VARCHAR PK), user_id (FK → users.id UNIQUE), age (INT), city (VARCHAR),
-           membership_type (VARCHAR), total_spend (DECIMAL), items_purchased (INT),
-           average_rating (DECIMAL), satisfaction_level (VARCHAR)
 
 TABLE: categories
   Columns: id (VARCHAR PK), name (VARCHAR), parent_id (FK → categories.id, nullable — null means top-level)
@@ -71,7 +81,6 @@ TABLE: coupons
 COMMON JOIN PATTERNS:
   - Revenue by product: orders o → order_items oi ON oi.order_id = o.id → products p ON p.id = oi.product_id
   - Category ratings: products p → categories c ON c.id = p.category_id → reviews r ON r.product_id = p.id
-  - Customer spend: users u → customer_profiles cp ON cp.user_id = u.id
   - Shipping analysis: orders o → shipments s ON s.order_id = o.id (use DISTINCT or aggregate due to multiple shipments)
   - Top products by quantity: order_items oi JOIN products p ON p.id = oi.product_id GROUP BY p.name ORDER BY SUM(oi.quantity) DESC
   - User's cart: cart_items ci JOIN products p ON p.id = ci.product_id JOIN stores s ON s.id = p.store_id WHERE ci.user_id = '<userId>'
