@@ -15,6 +15,8 @@ public class ChatResponse {
     private String conversationId;
     private String intent;
     private String generatedSql;
+    private String redirectUrl;
+    private String redirectLabel;
 
     public ChatResponse(String message, String sessionId, String status) {
         this.message = message;

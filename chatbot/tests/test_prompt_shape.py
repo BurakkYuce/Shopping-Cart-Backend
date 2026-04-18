@@ -171,3 +171,51 @@ def test_user_question_reaches_prompt(
     # HumanMessage is the last element in the list
     human = messages[-1]
     assert q == human.content
+
+
+def test_guardrails_prompt_has_action_redirect_catalog():
+    """The guardrails prompt must document the action_redirect intent and all
+    six action_keys, so the LLM knows which nav intents to route and which
+    field name (action_key) to emit. Static prompt-shape assertion — no LLM."""
+    from pathlib import Path
+
+    prompt_path = (
+        Path(__file__).parent.parent / "prompts" / "guardrails_system.md"
+    )
+    rendered = prompt_path.read_text()
+
+    assert "action_redirect" in rendered, (
+        "guardrails prompt missing action_redirect intent section"
+    )
+    for action_key in (
+        "view_orders",
+        "start_return",
+        "view_cart",
+        "view_wishlist",
+        "view_addresses",
+        "view_profile",
+    ):
+        assert action_key in rendered, (
+            f"guardrails prompt missing action_key example: {action_key}"
+        )
+    # INDIVIDUAL-only guard must be documented
+    assert "INDIVIDUAL" in rendered
+
+
+def test_guardrails_prompt_has_negative_examples():
+    """Policy/info vs action boundary must be documented as negative examples,
+    otherwise LLM confuses 'iade nasıl yapılır' (info → clarify) with
+    'iade başlat' (action → redirect)."""
+    from pathlib import Path
+
+    prompt_path = (
+        Path(__file__).parent.parent / "prompts" / "guardrails_system.md"
+    )
+    rendered = prompt_path.read_text()
+
+    assert "iade nasıl yapılır" in rendered, (
+        "guardrails prompt missing TR info-vs-action boundary example"
+    )
+    assert "how do returns work" in rendered, (
+        "guardrails prompt missing EN info-vs-action boundary example"
+    )

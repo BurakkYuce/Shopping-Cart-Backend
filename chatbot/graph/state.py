@@ -32,9 +32,15 @@ class AgentState(TypedDict):
     user_context: UserContext
 
     # ── Routing ────────────────────────────────────────────────────────────
-    intent: str  # "sql_query" | "greeting" | "off_topic" | "clarify"
+    intent: str  # "sql_query" | "greeting" | "off_topic" | "clarify" | "action_redirect"
     is_safe: bool
     guardrail_rejection_reason: Optional[str]
+    language: Optional[str]  # "tr" | "en"
+
+    # ── Action redirect (INDIVIDUAL-only navigation CTAs) ──────────────────
+    action_key: Optional[str]        # "view_orders" | "start_return" | ...
+    redirect_url: Optional[str]      # "/orders", "/returns", ...
+    redirect_label: Optional[str]    # CTA button label (localised)
 
     # ── SQL pipeline ───────────────────────────────────────────────────────
     schema_context: str       # built once per session

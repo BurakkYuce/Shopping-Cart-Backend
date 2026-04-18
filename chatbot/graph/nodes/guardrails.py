@@ -61,12 +61,14 @@ def guardrails_node(state: AgentState) -> AgentState:
         is_safe = bool(parsed.get("is_safe", True))
         reason = parsed.get("reason", "")
         language = parsed.get("language", "en")
+        action_key = parsed.get("action_key")
     except (json.JSONDecodeError, ValueError):
         # Fail safe: treat as off_topic if parsing breaks
         intent = "off_topic"
         is_safe = False
         reason = f"Guardrails LLM returned unparseable response: {raw[:200]}"
         language = "en"
+        action_key = None
         log_event(
             "guardrails.parse_error",
             level="warning",
@@ -78,6 +80,18 @@ def guardrails_node(state: AgentState) -> AgentState:
 
     if language not in ("tr", "en"):
         language = "en"
+
+    # Guard: action_redirect is INDIVIDUAL-only. Downgrade if another role slipped through.
+    if intent == "action_redirect" and role != "INDIVIDUAL":
+        log_event(
+            "guardrails.action_redirect_downgraded",
+            level="warning",
+            session_id=state.get("session_id"),
+            role=role,
+            action_key=action_key,
+        )
+        intent = "sql_query"
+        action_key = None
 
     log_event(
         "guardrails.classified",
@@ -95,6 +109,7 @@ def guardrails_node(state: AgentState) -> AgentState:
         "intent": intent,
         "is_safe": is_safe,
         "language": language,
+        "action_key": action_key if intent == "action_redirect" else None,
         "guardrail_rejection_reason": reason if not is_safe else None,
     }
 

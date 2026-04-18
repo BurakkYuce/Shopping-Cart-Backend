@@ -15,6 +15,7 @@ from typing import Literal
 
 from langgraph.graph import END, START, StateGraph
 
+from graph.nodes.action_router import action_router_node
 from graph.nodes.analysis import analysis_node
 from graph.nodes.error_recovery import error_recovery_node
 from graph.nodes.guardrails import guardrails_node
@@ -27,12 +28,14 @@ MAX_RETRIES = int(os.environ.get("SQL_RETRY_LIMIT", 1))
 
 # ── Conditional edge functions ──────────────────────────────────────────────
 
-def after_guardrails(state: AgentState) -> Literal["sql_generator", "__end__"]:
+def after_guardrails(state: AgentState) -> Literal["sql_generator", "action_router", "__end__"]:
     if not state.get("is_safe", True):
         return END
     intent = state.get("intent", "off_topic")
     if intent == "sql_query":
         return "sql_generator"
+    if intent == "action_redirect":
+        return "action_router"
     return END
 
 
@@ -70,6 +73,7 @@ def build_graph() -> StateGraph:
     graph.add_node("error_recovery", error_recovery_node)
     graph.add_node("analysis", analysis_node)
     graph.add_node("visualization", visualization_node)
+    graph.add_node("action_router", action_router_node)
     graph.add_node("fatal_sql_handler", _handle_fatal_sql)
 
     graph.add_edge(START, "guardrails")
@@ -77,7 +81,11 @@ def build_graph() -> StateGraph:
     graph.add_conditional_edges(
         "guardrails",
         after_guardrails,
-        {"sql_generator": "sql_generator", END: END},
+        {
+            "sql_generator": "sql_generator",
+            "action_router": "action_router",
+            END: END,
+        },
     )
 
     graph.add_conditional_edges(
@@ -98,6 +106,7 @@ def build_graph() -> StateGraph:
 
     graph.add_edge("analysis", "visualization")
     graph.add_edge("visualization", END)
+    graph.add_edge("action_router", END)
     graph.add_edge("fatal_sql_handler", END)
 
     return graph.compile()

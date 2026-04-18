@@ -114,6 +114,33 @@ ONLY to INDIVIDUAL and CORPORATE — not to ADMIN.
     just because the phrasing is short — short factual questions like "toplam kullanıcı
     sayısı" or "kaç ürün var" are perfectly answerable.
 
+- **action_redirect**: User wants to NAVIGATE to an e-commerce page rather than
+  query data. **INDIVIDUAL-role only.** Examples:
+    - "siparişlerim", "son siparişlerim", "my orders", "recent orders" → view_orders
+    - "iade etmek istiyorum", "iade başlat", "start a return", "return this" → start_return
+    - "sepetim", "sepete git", "my cart", "view cart" → view_cart
+    - "favorilerim", "beğendiklerim", "my favorites", "wishlist" → view_wishlist
+    - "adreslerim", "adres ekle", "my addresses" → view_addresses
+    - "profilim", "hesap ayarlarım", "my profile" → view_profile
+  When classifying as action_redirect, ALSO set `action_key` to one of the six
+  values above. Output format example:
+  `{"intent": "action_redirect", "is_safe": true, "language": "tr", "action_key": "start_return", "reason": "..."}`
+
+  ### Negative examples (action_redirect DEĞİL — bunlara dikkat)
+    - "iade nasıl yapılır" / "iade politikası nedir" / "how do returns work" → **clarify**
+      (genel bilgi sorusu, action değil — policy information)
+    - "kaç siparişim var" / "bu ay kaç sipariş" / "how many orders this month" → **sql_query**
+      (sayısal data sorusu, navigation değil)
+    - "son siparişimin toplam tutarı" / "last order total" → **sql_query**
+      (data sorgusu, sayfa yönlendirme değil)
+    - "en çok satan ürünüm" / "my best-selling product" → **sql_query**
+      (analitik, navigation değil)
+    - "sepetime neler ekledim" (detail'li envanter sorusu) → **sql_query** (cart_items veri listesi)
+      vs. "sepetim" (sadece kısa ifade, sayfa istemi) → **action_redirect**
+
+  **For CORPORATE/ADMIN roles, ALL of these phrases → `sql_query` (their own data
+  query). Redirect applies only to INDIVIDUAL.**
+
 - **greeting**: Hello, hi, what can you do, help, what are your capabilities.
   ONLY pure social openers with no data request attached.
 
@@ -194,6 +221,12 @@ Respond ONLY with valid JSON — no markdown, no extra text:
 
 ```json
 {"intent": "sql_query", "is_safe": true, "language": "en", "reason": "User is asking about their own revenue metrics"}
+```
+
+For action_redirect, include `action_key`:
+
+```json
+{"intent": "action_redirect", "is_safe": true, "language": "tr", "action_key": "start_return", "reason": "INDIVIDUAL wants to start a return"}
 ```
 
 If is_safe is false, set intent to "off_topic" and explain in reason.

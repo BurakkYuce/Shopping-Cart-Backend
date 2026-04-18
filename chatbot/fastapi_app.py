@@ -71,6 +71,8 @@ class ChatResponse(BaseModel):
     intent: Optional[str] = None
     plotlyJson: Optional[str] = None
     generatedSql: Optional[str] = None
+    redirectUrl: Optional[str] = None
+    redirectLabel: Optional[str] = None
 
 
 @app.get("/health")
@@ -135,6 +137,10 @@ def chat_ask(
         "intent": "",
         "is_safe": True,
         "guardrail_rejection_reason": None,
+        "language": None,
+        "action_key": None,
+        "redirect_url": None,
+        "redirect_label": None,
         "schema_context": get_schema_context(),
         "role_filter_cte": sql_filter.build_cte(user_ctx.role, user_ctx.user_id),
         "role_usage_hint": sql_filter.build_usage_hint(user_ctx.role),
@@ -162,6 +168,8 @@ def chat_ask(
         intent=result_state.get("intent"),
         plotlyJson=plotly_json,
         generatedSql=result_state.get("generated_sql"),
+        redirectUrl=result_state.get("redirect_url"),
+        redirectLabel=result_state.get("redirect_label"),
     )
 
 
@@ -196,6 +204,10 @@ def chat_ask_stream(
         "intent": "",
         "is_safe": True,
         "guardrail_rejection_reason": None,
+        "language": None,
+        "action_key": None,
+        "redirect_url": None,
+        "redirect_label": None,
         "schema_context": get_schema_context(),
         "role_filter_cte": sql_filter.build_cte(user_ctx.role, user_ctx.user_id),
         "role_usage_hint": sql_filter.build_usage_hint(user_ctx.role),
@@ -238,6 +250,11 @@ def chat_ask_stream(
                 if vis and vis.get("plotly_json"):
                     event["plotlyJson"] = vis["plotly_json"]
                 event["message"] = node_data.get("final_response", "")
+            elif node_name == "action_router":
+                event["redirectUrl"] = node_data.get("redirect_url")
+                event["redirectLabel"] = node_data.get("redirect_label")
+                event["actionKey"] = node_data.get("action_key")
+                event["message"] = node_data.get("final_response", "")
             elif node_name == "fatal_sql_handler":
                 event["message"] = node_data.get("final_response", "")
                 event["error"] = True
@@ -254,6 +271,9 @@ def chat_ask_stream(
         vis = collected.get("visualization_spec")
         if vis and vis.get("plotly_json"):
             done["plotlyJson"] = vis["plotly_json"]
+        if collected.get("redirect_url"):
+            done["redirectUrl"] = collected["redirect_url"]
+            done["redirectLabel"] = collected.get("redirect_label")
         done["message"] = collected.get("final_response", "")
         yield f"data: {json.dumps(done)}\n\n"
 
