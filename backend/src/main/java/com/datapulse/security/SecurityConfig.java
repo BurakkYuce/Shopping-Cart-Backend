@@ -1,5 +1,6 @@
 package com.datapulse.security;
 
+import com.datapulse.logging.LogEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -33,6 +34,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final AuthEntryPoint authEntryPoint;
     private final AccessDeniedHandlerImpl accessDeniedHandler;
+    private final LogEventPublisher logEventPublisher;
 
     @Value("${app.cors.allowed-origins:http://localhost:4200}")
     private String allowedOrigins;
@@ -58,9 +60,15 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/brands/**").permitAll()
                 .anyRequest().authenticated())
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(securityAttackDetectionFilter(), JwtAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public SecurityAttackDetectionFilter securityAttackDetectionFilter() {
+        return new SecurityAttackDetectionFilter(logEventPublisher);
     }
 
     @Bean

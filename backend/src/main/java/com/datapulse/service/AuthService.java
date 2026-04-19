@@ -90,11 +90,28 @@ public class AuthService {
 
         String userId = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
 
+        com.datapulse.model.RoleType requestedRole = request.getRoleType();
+        com.datapulse.model.RoleType safeRole = requestedRole;
+        if (requestedRole == com.datapulse.model.RoleType.ADMIN) {
+            logEventPublisher.publish(
+                    LogEventType.SECURITY_PRIVILEGE_ESCALATION,
+                    null,
+                    null,
+                    Map.of(
+                            "email", request.getEmail(),
+                            "attack_type", "privilege_escalation",
+                            "reason", "register_body_role_admin",
+                            "attack_payload", "roleType=ADMIN"
+                    )
+            );
+            safeRole = com.datapulse.model.RoleType.INDIVIDUAL;
+        }
+
         User user = new User();
         user.setId(userId);
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRoleType(request.getRoleType());
+        user.setRoleType(safeRole);
         user.setGender(request.getGender());
         user.setEmailVerified(false);
         userRepository.save(user);

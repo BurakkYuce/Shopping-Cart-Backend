@@ -25,7 +25,16 @@
         "client_ip":        { "type": "ip" },
         "message":          { "type": "text" },
         "stack_trace":      { "type": "text" },
-        "details":          { "type": "flattened" }
+        "details":          { "type": "flattened" },
+        "attack_type":      { "type": "keyword" },
+        "attack_pattern":   { "type": "keyword" },
+        "attack_source":    { "type": "keyword" },
+        "attack_payload":   { "type": "text" },
+        "username":         { "type": "keyword" },
+        "user_agent":       { "type": "keyword", "ignore_above": 512 },
+        "reason":           { "type": "keyword" },
+        "severity":         { "type": "keyword" },
+        "tags":             { "type": "keyword" }
       }
     }
   },

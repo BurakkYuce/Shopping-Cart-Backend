@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -42,23 +43,38 @@ public class ApiRequestLoggingFilter implements Filter {
 
             String userId = null;
             String userRole = null;
+            String username = null;
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl ud) {
                 userId = ud.getId();
                 userRole = ud.getRole().name();
+                username = ud.getUsername();
             }
 
             LogEvent.RequestInfo requestInfo = new LogEvent.RequestInfo();
             requestInfo.setMethod(request.getMethod());
             requestInfo.setEndpoint(path);
-            requestInfo.setIp(request.getRemoteAddr());
+            requestInfo.setIp(clientIp(request));
             requestInfo.setResponseTimeMs(duration);
             requestInfo.setStatusCode(response.getStatus());
 
-            logEventPublisher.publish(LogEventType.API_REQUEST, userId, userRole,
-                    Map.of("query", request.getQueryString() != null ? request.getQueryString() : ""),
-                    requestInfo);
+            Map<String, Object> details = new HashMap<>();
+            details.put("query", request.getQueryString() != null ? request.getQueryString() : "");
+            if (username != null) details.put("username", username);
+            String ua = request.getHeader("User-Agent");
+            if (ua != null) details.put("user_agent", ua);
+
+            logEventPublisher.publish(LogEventType.API_REQUEST, userId, userRole, details, requestInfo);
         }
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int comma = xff.indexOf(',');
+            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
+        }
+        return request.getRemoteAddr();
     }
 
     private boolean shouldSkip(String path) {

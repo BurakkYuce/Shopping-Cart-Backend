@@ -116,6 +116,7 @@ services:
       - ./elk/elasticsearch/templates/ecommerce-logs-template.json:/tmp/template.json:ro
       - ./elk/elasticsearch/ilm/ecommerce-logs-policy.json:/tmp/ilm.json:ro
       - ./elk/kibana/exports/datapulse-dashboard.ndjson:/tmp/dashboard.ndjson:ro
+      - ./elk/kibana/exports/datapulse-security-dashboard.ndjson:/tmp/security-dashboard.ndjson:ro
     entrypoint: >
       sh -c '
         set -e;
@@ -123,8 +124,10 @@ services:
         curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X PUT "http://elasticsearch:9200/_ilm/policy/ecommerce-logs-policy" -H "Content-Type: application/json" --data-binary @/tmp/ilm.json >/dev/null && echo "  ILM OK";
         echo "[elk-bootstrap] Index template...";
         curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X PUT "http://elasticsearch:9200/_index_template/ecommerce-logs" -H "Content-Type: application/json" --data-binary @/tmp/template.json >/dev/null && echo "  Template OK";
-        echo "[elk-bootstrap] Kibana saved objects...";
-        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X POST "http://kibana:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form "file=@/tmp/dashboard.ndjson" >/dev/null && echo "  Dashboard OK";
+        echo "[elk-bootstrap] Kibana analytics dashboard...";
+        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X POST "http://kibana:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form "file=@/tmp/dashboard.ndjson" >/dev/null && echo "  Analytics dashboard OK";
+        echo "[elk-bootstrap] Kibana security dashboard...";
+        curl -sf -u "elastic:$${ELASTIC_PASSWORD}" -X POST "http://kibana:5601/api/saved_objects/_import?overwrite=true" -H "kbn-xsrf: true" --form "file=@/tmp/security-dashboard.ndjson" >/dev/null && echo "  Security dashboard OK";
         echo "[elk-bootstrap] Done.";
       '
     networks:

@@ -1,14 +1,21 @@
 package com.datapulse.exception;
 
 import com.datapulse.dto.response.ApiErrorResponse;
+import com.datapulse.logging.LogEvent;
+import com.datapulse.logging.LogEventPublisher;
+import com.datapulse.logging.LogEventType;
+import com.datapulse.security.UserDetailsImpl;
 import com.datapulse.service.SqlExecutionService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,7 +26,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
+
+    private final LogEventPublisher logEventPublisher;
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(EntityNotFoundException ex, HttpServletRequest request) {
@@ -41,12 +51,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        publishAccessDenied(request, ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiErrorResponse(403, "Forbidden", "Access denied", request.getRequestURI()));
     }
 
     @ExceptionHandler(UnauthorizedAccessException.class)
     public ResponseEntity<ApiErrorResponse> handleUnauthorized(UnauthorizedAccessException ex, HttpServletRequest request) {
+        publishAccessDenied(request, ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiErrorResponse(403, "Forbidden", ex.getMessage(), request.getRequestURI()));
     }
@@ -120,5 +132,41 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleGeneral(Exception ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiErrorResponse(500, "Internal Server Error", ex.getMessage(), request.getRequestURI()));
+    }
+
+    private void publishAccessDenied(HttpServletRequest request, String reason) {
+        String userId = null;
+        String userRole = null;
+        String username = null;
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof UserDetailsImpl ud) {
+            userId = ud.getId();
+            userRole = ud.getRole().name();
+            username = ud.getUsername();
+        }
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("attack_type", "access_denied");
+        if (reason != null) details.put("reason", reason);
+        if (username != null) details.put("username", username);
+        String ua = request.getHeader("User-Agent");
+        if (ua != null) details.put("user_agent", ua);
+
+        LogEvent.RequestInfo requestInfo = new LogEvent.RequestInfo();
+        requestInfo.setMethod(request.getMethod());
+        requestInfo.setEndpoint(request.getRequestURI());
+        requestInfo.setIp(clientIp(request));
+        requestInfo.setStatusCode(403);
+
+        logEventPublisher.publish(LogEventType.SECURITY_ACCESS_DENIED, userId, userRole, details, requestInfo);
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String xff = request.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            int comma = xff.indexOf(',');
+            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
+        }
+        return request.getRemoteAddr();
     }
 }
